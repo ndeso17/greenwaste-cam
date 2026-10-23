@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Pemilah Objek</string>
+    <string name="app_title">Pemilah Objek</string>
+    <string name="skeleton_state">Kerangka aplikasi. Belum ada profil model, kalibrasi, atau koneksi controller. Pemantauan belum dapat dimulai.</string>
+</resources>
