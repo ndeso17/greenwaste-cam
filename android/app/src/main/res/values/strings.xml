@@ -2,5 +2,14 @@
 <resources>
     <string name="app_name">Pemilah Objek</string>
     <string name="app_title">Pemilah Objek</string>
-    <string name="skeleton_state">Kerangka aplikasi. Belum ada profil model, kalibrasi, atau koneksi controller. Pemantauan belum dapat dimulai.</string>
+
+    <string name="menu_operation">Kamera / Operasi</string>
+    <string name="menu_models">Model &amp; Kelas</string>
+    <string name="menu_bins">Bak &amp; Robot</string>
+    <string name="menu_machine">Pengaturan Mesin</string>
+    <string name="menu_calibration">Kalibrasi</string>
+    <string name="menu_history">Status &amp; Riwayat</string>
+
+    <string name="state_not_configured">Belum dikonfigurasi. Menu ini belum memiliki data sah dan tidak menampilkan angka contoh.</string>
+    <string name="state_operation_blocked">Pemantauan belum dapat dimulai. Profil model, kalibrasi, dan koneksi controller belum tersedia.</string>
 </resources>
