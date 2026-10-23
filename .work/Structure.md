@@ -43,9 +43,10 @@ Arah dependensi: `ui` → `domain` → `data` → `platform`
 | `id.pemilah` | `MainActivity`, titik masuk aplikasi | — | WP-08 |
 | `id.pemilah.ui` | Compose screen, navigasi, overlay, ViewModel | — | WP-09, 12, 13, 16, 20, 23, 35 |
 | `id.pemilah.domain.target` | `TargetSelector` | `TargetSelector` | WP-30, 31 |
+| `id.pemilah.domain.waste` | `WasteClass` (tujuh kelas resmi) | — | WP-50 |
 | `id.pemilah.domain.tracking` | `Tracker` | `Tracker` | WP-24 |
-| `id.pemilah.domain.config` | `BinMapping` | `BinMapping` | WP-13 |
-| `id.pemilah.domain.operation` | `OperationGuard` | `OperationGuard` | WP-32, 33 |
+| `id.pemilah.domain.config` | `BinMapping`, `BinId` | `BinMapping` | WP-13, WP-50 |
+| `id.pemilah.domain.operation` | `OperationGuard`, `StartDecision`, `MachineState` | `OperationGuard` | WP-32, 33, WP-51 |
 | `id.pemilah.domain.calibration` | `CalibrationValidity` | `CalibrationValidity` | WP-19 |
 | `id.pemilah.config` | `MachineConfig` (model + validasi) | — | WP-10 |
 | `id.pemilah.storage` | `ConfigStore` (DataStore) | `ProfileRepository` (sebagian) | WP-11 |
@@ -56,7 +57,7 @@ Arah dependensi: `ui` → `domain` → `data` → `platform`
 | `id.pemilah.area` | `WorkAreaFilter` | `WorkAreaFilter` | WP-17, 23 |
 | `id.pemilah.protocol` | `CommandCodec` | `CommandCodec` | WP-25, 27 |
 | `id.pemilah.link` | `ControllerLink` (USB) | `ControllerLink` | WP-26, 28 |
-| `id.pemilah.telemetry` | `TelemetryQueue` | `TelemetryQueue` | WP-47 |
+| `id.pemilah.telemetry` | `TelemetryQueue`, `TelemetryEvent`, `CyclePayloadFactory` | `TelemetryQueue` | WP-47, WP-52 |
 
 Nama berkas mengikuti deklarasi utama (`Styleguide.md` §1). Test berpasangan
 `X.kt` → `XTest.kt` pada `src/test/java/id/pemilah/...` dengan paket sama.
