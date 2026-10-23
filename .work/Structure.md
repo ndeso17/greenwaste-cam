@@ -58,6 +58,7 @@ Arah dependensi: `ui` → `domain` → `data` → `platform`
 | `id.pemilah.area` | `WorkAreaFilter` | `WorkAreaFilter` | WP-17, 23 |
 | `id.pemilah.protocol` | `CommandCodec` | `CommandCodec` | WP-25, 27 |
 | `id.pemilah.link` | `ControllerLink` (USB) | `ControllerLink` | WP-26, 28 |
+| `id.pemilah.usb` | `SerialChannel`, `ControllerConnection`, `UsbCdcChannelOpener` | `ControllerLink` (transport) | WP-26, WP-55, WP-56 |
 | `id.pemilah.telemetry` | `TelemetryQueue`, `TelemetryEvent`, `CyclePayloadFactory` | `TelemetryQueue` | WP-47, WP-52 |
 
 Nama berkas mengikuti deklarasi utama (`Styleguide.md` §1). Test berpasangan

@@ -16,7 +16,7 @@ tanggal 24 Oktober 2026. Keputusan ini menutup bagian stack dari B-01; bagian
 | UI | Jetpack Compose + Material3 | BOM 2024.10.01 | XML + View |
 | Kamera | CameraX | 1.4.0 | Camera2 langsung |
 | Inferensi | ONNX Runtime Android | 1.19.2 | TFLite (perlu konversi) |
-| USB | usb-serial-for-android | 3.8.1 (mulai WP-25) | Android USB host API langsung |
+| USB | usb-serial-for-android (`CdcAcmSerialDriver`) | 3.8.1, repo JitPack (D-04) | Android USB host API langsung |
 | Penyimpanan | DataStore Preferences + berkas JSON profil | 1.1.1 | Room |
 | Build | Gradle wrapper, Kotlin DSL, AGP | 8.11.1 / 8.7.3 | Bazel |
 | SDK | compileSdk 35, targetSdk 35, minSdk 26 | — | — |
