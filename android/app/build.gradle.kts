@@ -51,6 +51,8 @@ dependencies {
     implementation("androidx.camera:camera-lifecycle:1.4.0")
     implementation("androidx.camera:camera-view:1.4.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
+    // USB OTG CDC-ACM ke ESP32-S3 — D-04. Hanya lapisan platform/usb yang memakai.
+    implementation("com.github.mik3y:usb-serial-for-android:3.8.1")
 
     testImplementation("junit:junit:4.13.2")
 }

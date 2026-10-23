@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Filter perangkat USB OTG untuk controller ESP32-S3 dengan native USB CDC-ACM
+  (D-04). Filter memakai kelas antarmuka CDC (standar USB), bukan VID/PID, karena
+  VID/PID firmware belum ditetapkan (B-04). Tambahkan atribut vendor-id/product-id
+  setelah firmware menetapkannya; jangan mengarang nilainya.
+
+  Nilai kelas: 0x02 = Communications, 0x02 = ACM, 0x00 = protokol dasar.
+-->
+<resources>
+    <usb-device class="2" subclass="2" protocol="0" />
+</resources>
