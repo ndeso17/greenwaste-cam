@@ -1,7 +1,7 @@
 # Architecture — Camera
 
 **Repo:** `Camera/`
-**Status:** Draf kerja; stack **disetujui** 24 Oktober 2026 (D-01)
+**Status:** Draf kerja; stack disetujui 24 Oktober 2026 (D-01)
 **Dokumen terkait:** `PRD.md`, `Design.md`, `Schema.md`, `Rules.md`, `Structure.md`
 
 ## 1. Status stack

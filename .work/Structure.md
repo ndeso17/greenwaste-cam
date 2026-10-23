@@ -1,7 +1,7 @@
 # Structure — Camera
 
 **Repo:** `Camera/`
-**Status:** Struktur aktual per 24 Oktober 2026 (WP-03, stack D-01)
+**Status:** Struktur aktual per 24 Oktober 2026 (WP-03, WP-08; stack D-01, JDK D-03)
 **Dokumen terkait:** `Architecture.md` §2, `Styleguide.md` §2, `Rules.md` §2
 
 ## 1. Pohon direktori
@@ -74,9 +74,10 @@ Dijalankan dari `Camera/android/` (`AGENTS.md` §11):
 Prasyarat lingkungan (dicatat di `../.work/evidence/device-requirements.md`):
 
 - `android/local.properties` berisi `sdk.dir=/home/mrksvt/Expo` (tidak di-commit).
-- Build memakai toolchain Java 17; JDK 25 terpasang tidak dipakai AGP.
+- Build memakai `JAVA_HOME=/home/mrksvt/android-studio/jbr` (JBR 21.0.8, D-03).
 - Mirror Central `maven-central.storage-download.googleapis.com` dipakai karena
   `repo1.maven.org` mengembalikan HTTP 403.
+- Seluruh teks UI berasal dari `res/values/strings.xml` (D-03).
 
 ## 4. Strategi test
 
