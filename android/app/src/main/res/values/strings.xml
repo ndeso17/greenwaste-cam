@@ -12,4 +12,17 @@
 
     <string name="state_not_configured">Belum dikonfigurasi. Menu ini belum memiliki data sah dan tidak menampilkan angka contoh.</string>
     <string name="state_operation_blocked">Pemantauan belum dapat dimulai. Profil model, kalibrasi, dan koneksi controller belum tersedia.</string>
+
+    <string name="panel_target">Target aktif</string>
+    <string name="panel_robot">Robot</string>
+    <string name="panel_conveyor">Conveyor</string>
+    <string name="panel_session">Ringkasan sesi</string>
+    <string name="target_none">Belum ada target</string>
+    <string name="stage3_not_integrated">Belum terintegrasi pada tahap 3</string>
+    <string name="session_empty">Belum ada siklus tercatat</string>
+    <string name="camera_starting">Kamera sedang dimulai.</string>
+    <string name="camera_permission_required">Izin kamera belum diberikan. Pratinjau tidak dapat ditampilkan. Berikan izin kamera untuk melanjutkan.</string>
+    <string name="camera_not_available">Kamera tidak tersedia pada perangkat ini. Pratinjau tidak dapat ditampilkan. Periksa perangkat sebelum memulai pemantauan.</string>
+    <string name="camera_failed">Kamera gagal dibuka: %1$s. Pratinjau tidak dapat ditampilkan. Periksa perangkat lalu buka ulang aplikasi.</string>
+    <string name="action_grant_camera">Berikan izin kamera</string>
 </resources>

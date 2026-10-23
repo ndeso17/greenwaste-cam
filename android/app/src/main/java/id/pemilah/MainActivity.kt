@@ -20,6 +20,10 @@ internal object Palette {
     val onSurface = Color(0xFFE6E8EC)
     val onSurfaceMuted = Color(0xFF9AA0AB)
     val accent = Color(0xFF2F6FED)
+    val success = Color(0xFF2E9E5B)
+    val warning = Color(0xFFC98A12)
+    val danger = Color(0xFFD64545)
+    val neutralClass = Color(0xFF7C8595)
 }
 
 internal val PemilahColors = darkColorScheme(

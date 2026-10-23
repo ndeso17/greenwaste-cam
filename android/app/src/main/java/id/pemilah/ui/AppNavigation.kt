@@ -100,6 +100,10 @@ private fun DestinationContent(
     destination: AppDestination,
     modifier: Modifier = Modifier,
 ) {
+    if (destination == AppDestination.OPERATION) {
+        OperationScreen(modifier = modifier)
+        return
+    }
     Column(
         modifier = modifier,
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -123,7 +127,6 @@ private fun DestinationContent(
         )
     }
 }
-
 @Preview(widthDp = 960, heightDp = 540)
 @Composable
 private fun AppNavigationPreview() {
