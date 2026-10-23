@@ -13,6 +13,7 @@ Camera/
 ├── .work/                      spesifikasi repo (dokumen, bukan kode)
 │   ├── PRD.md  Architecture.md  Schema.md  Styleguide.md
 │   ├── Design.md  OperationScreen.xml  Rules.md  Structure.md
+│   ├── spec-machine.md          parameter konfigurasi & kalibrasi (WP-05)
 │   └── assets/OperationMockup-v1.png
 └── android/                    proyek Gradle (satu modul: app)
     ├── settings.gradle.kts     (WP-07)
