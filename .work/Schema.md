@@ -1,0 +1,202 @@
+# Schema — Camera
+
+**Repo:** `Camera/`
+**Status:** Draf kerja
+**Format:** JSON untuk profil dan konfigurasi; tipe Kotlin sebagai rujukan lapisan
+
+## 1. Prinsip
+
+- Semua data persisten memiliki `schemaVersion` eksplisit.
+- Versi skema tidak dikenal ditolak dengan alasan, bukan diabaikan.
+- Tidak ada nilai default tersembunyi yang mengisi data hilang.
+- Angka mesin tidak ditanam di kode; semuanya berasal dari berkas konfigurasi.
+
+## 2. Kelas resmi (enum)
+
+```
+enum class WasteClass {
+    ORGANIK, PLASTIK, KALENG, STYROFOAM, KACA, KARDUS, BESI
+}
+```
+
+Tujuh nilai, urutan sesuai PRD induk bagian 5. Enum ini tidak boleh memuat
+`KERTAS`, `LOGAM`, atau `UNKNOWN` sebagai kelas yang dapat dipetakan ke bak.
+Objek tak dikenal diwakili `null` pada deteksi, bukan anggota enum.
+
+## 3. ModelProfile
+
+```json
+{
+  "schemaVersion": 1,
+  "profileId": "uuid",
+  "name": "yolov8-sampah-v2",
+  "version": "2.0.0",
+  "modelFile": "models/yolov8-sampah-v2.onnx",
+  "labels": ["Organik", "Plastik", "Kaleng", "Styrofoam", "Kaca", "Kardus", "Besi"],
+  "classMapping": { "Organik": "ORGANIK" },
+  "input": {
+    "width": 0, "height": 0,
+    "normalization": "scale_0_1",
+    "layout": "nchw"
+  },
+  "output": {
+    "format": "yolo_v8",
+    "boxesNormalized": true,
+    "hasObjectness": false
+  },
+  "confidenceThreshold": 0.0,
+  "groupingEnabled": false,
+  "binAssignment": { "ORGANIK": null }
+}
+```
+
+Aturan validasi:
+
+1. `labels` wajib berurutan sesuai keluaran model.
+2. `classMapping` wajib memetakan setiap label ke satu `WasteClass`.
+3. Satu `WasteClass` boleh menerima lebih dari satu label (mis. dua label kaca).
+4. Satu label tidak boleh dipetakan ke lebih dari satu `WasteClass`.
+5. Label yang memetakan ke dua kelas sekaligus (`KALENG` + `BESI`) ditolak.
+6. `input.width`/`height` wajib sama dengan tensor model.
+7. `confidenceThreshold` pada rentang `0.0 < x <= 1.0`.
+8. `binAssignment` boleh kosong pada impor, tetapi kelas `null` memblokir start.
+
+Nilai angka di atas adalah placeholder; nilai sah berasal dari model dan
+keputusan B-02.
+
+## 4. MachineConfig
+
+```json
+{
+  "schemaVersion": 1,
+  "conveyor": {
+    "speedMin": null, "speedMax": null,
+    "encoderTicksPerMeter": null,
+    "direction": null
+  },
+  "workArea": {
+    "units": "millimeter",
+    "blocks": [{ "blockId": "B1", "polygon": [] }]
+  },
+  "robots": [
+    {
+      "robotId": "left",
+      "bins": ["B1", "B2", "B3"],
+      "enabled": true
+    }
+  ]
+}
+```
+
+Aturan:
+
+- Bak 1–3 milik robot `left`, 4–6 milik `right` (`AGENTS.md` invarian 9).
+- `null` berarti belum dikonfigurasi, bukan nol.
+- Perubahan geometri memicu penanda kalibrasi (CAL-06).
+
+## 5. CameraCalibration
+
+```json
+{
+  "schemaVersion": 1,
+  "captureResolution": { "width": 0, "height": 0 },
+  "rotationDegrees": 0,
+  "referencePoints": [{ "image": { "x": 0, "y": 0 }, "world": { "x": 0, "y": 0 } }],
+  "mappingMethod": null,
+  "reprojectionError": null,
+  "validity": {
+    "state": "needs_check",
+    "reason": null,
+    "checkedAt": null,
+    "checkedNote": null
+  }
+}
+```
+
+Aturan:
+
+- `mappingMethod` `null` berarti metode belum diputuskan (B-03), sehingga
+  kalibrasi tidak boleh dianggap sah.
+- `state` bernilai `valid` atau `needs_check`. Tidak ada pembersihan otomatis.
+- Perubahan `captureResolution` atau `rotationDegrees` memaksa `needs_check`.
+
+## 6. Detection (runtime, tidak persisten)
+
+| Field | Tipe | Catatan |
+|---|---|---|
+| `detectionId` | string | Unik per frame |
+| `frameId` | long | Nomor frame |
+| `capturedAt` | epoch ms | Waktu ambil frame |
+| `analyzedAt` | epoch ms | Waktu analisis selesai |
+| `box` | Rect | Koordinat frame asal |
+| `label` | string | Label dari profil |
+| `wasteClass` | WasteClass? | `null` bila tak dikenal |
+| `confidence` | float | |
+| `blockId` | string? | Blok hasil klasifikasi titik acuan |
+
+## 7. TrackedObject
+
+| Field | Tipe | Catatan |
+|---|---|---|
+| `trackId` | string | Stabil selama objek di area |
+| `wasteClass` | WasteClass? | |
+| `firstSeen` / `lastSeen` | epoch ms | |
+| `history` | list of `{capturedAt, center}` | Untuk tahap 4 |
+| `state` | enum | `tracked`, `released` |
+
+## 8. ActiveTarget (kontrak record untuk tahap 4)
+
+```json
+{
+  "targetId": "string",
+  "trackId": "string",
+  "wasteClass": "KALENG",
+  "confidence": 0.0,
+  "boxInFrame": { "x": 0, "y": 0, "w": 0, "h": 0 },
+  "capturedAt": 0,
+  "observationAgeMs": 0,
+  "worldPosition": { "x": 0, "y": 0 },
+  "blockId": "string",
+  "targetRobot": "left",
+  "targetBin": "B2",
+  "graspEligibility": "unverified"
+}
+```
+
+`graspEligibility` bernilai `unverified` sampai ada metode verifikasi yang
+disepakati (B-06). Nilai `eligible` dilarang diisi berdasarkan ukuran kotak saja.
+
+## 9. TelemetryEvent (ke backend)
+
+```json
+{
+  "eventId": "uuid",
+  "schemaVersion": 1,
+  "sessionId": "uuid",
+  "eventType": "cycle",
+  "capturedAt": 0,
+  "payload": {
+    "targetId": "string",
+    "wasteClass": "KALENG",
+    "confidence": 0.0,
+    "blockId": "B2",
+    "robotId": "left",
+    "binId": "B2",
+    "motionStatus": "completed",
+    "graspStatus": "unverified",
+    "verificationMethod": "none"
+  }
+}
+```
+
+Aturan:
+
+- `eventId` dipakai untuk idempotensi di backend.
+- `motionStatus` dan `graspStatus` adalah dua field terpisah (OUT-01).
+- `graspStatus` bernilai `verified`, `unverified`, atau `failed`; tidak ada
+  nilai `success` yang boleh diisi tanpa `verificationMethod` selain `none`.
+
+## 10. Yang belum diputuskan
+
+Bentuk keluaran model (B-02), nilai numerik konfigurasi mesin (B-03), format
+pesan serial (B-04), dan definisi operasional kelas (B-15).

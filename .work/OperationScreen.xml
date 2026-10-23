@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<screenSpec id="operationScreen" version="1" language="id-ID"
+            kind="descriptive-ui-spec" androidLayout="false"
+            decision="D-UI-01" orientation="landscape">
+  <sources markdown="Design.md" referenceImage="assets/OperationMockup-v1.png"
+           plan="../../.work/Plan_AndroidPemilah_23102026-124815.md"/>
+  <scope>Spesifikasi visual; bukan kode Android, protokol, atau persetujuan stack.</scope>
+  <bindings semantics="UI projections only" defaultWhenAbsent="Belum ada data"/>
+  <layout flow="horizontal" safeInsets="respect-system-bars-and-display-cutouts">
+    <navigation id="navigationRail" placement="left" selected="operation" requirement="UI-01 UI-02 UI-03 UI-04 UI-05 UI-06" wp="WP-09">
+      <item id="operation" label="Kamera / Operasi"/>
+      <item id="models" label="Model &amp; Kelas"/>
+      <item id="bins" label="Bak &amp; Robot"/>
+      <item id="machine" label="Pengaturan Mesin"/>
+      <item id="calibration" label="Kalibrasi"/>
+      <item id="history" label="Status &amp; Riwayat"/>
+    </navigation>
+    <content flow="vertical" placement="right-of-navigationRail">
+      <header id="statusHeader" placement="top">
+        <text id="appTitle" value="Pemilah Objek"/>
+        <profile id="activeProfile" binding="activeProfile.nameAndVersion" action="open-models" changeGuard="stopped-and-robot-ready"/>
+        <status id="cameraStatus" binding="camera.status"/>
+        <status id="calibrationStatus" binding="calibration.validity"/>
+        <status id="usbStatus" binding="controller.connection"/>
+      </header>
+      <body flow="horizontal" sizing="camera-about-two-thirds-sidebar-about-one-third; adaptable-not-fixed">
+        <column id="cameraColumn" placement="left" priority="largest">
+          <camera id="cameraStage" requirement="CAM-01 CAM-02 CAM-03 CAM-04 CAM-06 CAL-01" wp="WP-17 WP-21 WP-22 WP-23 WP-35" fit="preserve-aspect" transform="shared-frame-rotation-crop-letterbox-calibration">
+            <layer order="0" kind="live-frame" binding="camera.frame"/>
+            <layer order="1" kind="work-area" binding="calibration.workArea" stroke="dashed"/>
+            <layer order="2" kind="blocks" binding="calibration.blocks" stroke="dashed" labels="configured-block-ids"/>
+            <layer order="3" kind="detections" binding="detections.latest" stroke="solid" labels="class-and-confidence" stale="mark-explicitly"/>
+            <layer order="4" kind="active-target" binding="target.active" stroke="thick-corners" label="TARGET"/>
+          </camera>
+          <summary id="sessionSummary" placement="below-camera" requirement="OUT-01 UI-06" wp="WP-34 WP-35">
+            <metric id="motionCompleted" label="Gerak selesai" binding="session.motionCompleted"/>
+            <metric id="pickupVerified" label="Pengambilan terverifikasi" binding="session.pickupVerified"/>
+            <metric id="pickupUnverified" label="Pengambilan belum terverifikasi" binding="session.pickupUnverified" tone="warning"/>
+            <metric id="pickupFailed" label="Pengambilan gagal" binding="session.pickupFailed" tone="danger"/>
+            <status id="backendStatus" binding="backend.connection" blocksOperation="false"/>
+            <metric id="queueSize" label="Event tertunda" binding="backend.pendingEvents"/>
+            <action id="openHistory" label="Riwayat" intent="open-history"/>
+            <overflow policy="compact-or-scroll-summary; keep-operation-controls-visible"/>
+          </summary>
+        </column>
+        <column id="machineSidebar" placement="right" flow="vertical" overflow="scroll-cards-only">
+          <panel id="targetPanel" title="Target aktif" requirement="CAM-04" wp="WP-35">
+            <field id="targetId" binding="target.id"/>
+            <field id="targetClass" binding="target.classLabel"/>
+            <field id="targetLocation" binding="target.blockAndPosition"/>
+            <field id="targetDestination" binding="target.binAndRobot" fromStage="4"/>
+            <empty text="Belum ada target"/>
+          </panel>
+          <panel id="robotPanel" title="Robot" requirement="ARM-05 ARM-06" wp="WP-35 WP-43">
+            <robot id="leftRobot" label="Kiri" binding="robots.left.status"/>
+            <robot id="rightRobot" label="Kanan" binding="robots.right.status" inactiveText="Nonaktif"/>
+            <rule>Robot sibuk tidak menerima siklus baru; kamera tetap aktif.</rule>
+          </panel>
+          <panel id="conveyorPanel" title="Conveyor" requirement="CON-01 CON-02 CON-05 COM-04" wp="WP-28 WP-35">
+            <input id="requestedSpeed" label="Diminta" binding="conveyor.requestedSpeedDraft" unit="configuration.speedUnit" range="configuration.speedRange"/>
+            <action id="applySpeed" label="Terapkan" intent="apply-speed" enabledWhen="stage-at-least-4-and-link-ready-and-valid-input-and-controller-allows"/>
+            <status id="speedRequestStatus" values="pending confirmed rejected" binding="conveyor.requestStatus"/>
+            <readout id="actualSpeed" label="Aktual (encoder)" binding="conveyor.encoderSpeed" unit="configuration.speedUnit" stale="mark-last-value-as-stale"/>
+            <rule>Input diminta tidak menggantikan nilai aktual; respons controller menentukan hasil permintaan.</rule>
+          </panel>
+        </column>
+      </body>
+      <banner id="guardBanner" placement="above-controls" visibleWhen="guard-failed-or-fault-or-stale-warning" binding="operation.reasonsAndNextActions"/>
+      <footer id="operationControls" placement="bottom-persistent" requirement="UI-01 COM-05" wp="WP-32 WP-33 WP-35">
+        <action id="start" intent="start-mode" labelBinding="mode.startLabel" enabledWhen="stopped-and-active-mode-guard-passes"/>
+        <action id="stop" intent="stop-mode" labelBinding="mode.stopLabel" enabledWhen="active-mode-can-be-stopped" tone="danger-outline" hardwareEmergencyStop="false"/>
+        <status id="operationStatus" binding="operation.status"/>
+      </footer>
+    </content>
+  </layout>
+  <modes>
+    <mode id="monitoring" stage="3" startLabel="Mulai pemantauan" stopLabel="Hentikan pemantauan" startGuard="camera-profile-camera-calibration-related-faults-valid" actuatorCommands="forbidden">
+      <unavailable components="robotPanel conveyorPanel targetDestination" text="Belum terintegrasi" controls="disabled"/>
+      <rule>USB dan robot bukan syarat mulai pemantauan.</rule>
+    </mode>
+    <mode id="sorting" fromStage="4" startLabel="Mulai pemilahan" stopLabel="Hentikan pemilahan" startGuard="camera-profile-controller-machine-config-active-class-mapping-relevant-calibrations-valid-and-no-blocking-fault"/>
+  </modes>
+  <states>
+    <state id="empty" presentation="specific-empty-text; never-fabricate-values"/>
+    <state id="loading" presentation="component-loading; controls-follow-guard"/>
+    <state id="ready" presentation="start-enabled-only-after-guard; stop-disabled"/>
+    <state id="running" presentation="start-disabled; stop-enabled; show-active-mode"/>
+    <state id="fault" presentation="cause-and-next-action; start-disabled"/>
+    <state id="blocked" presentation="specific-blocker-and-remedy; start-disabled"/>
+    <state id="stale" presentation="mark-last-value; never-present-as-current"/>
+    <state id="backendUnavailable" presentation="show-queue-and-connection; not-a-start-blocker"/>
+  </states>
+  <style source="Design.md sections 2-3 and 7" theme="dark" cards="rounded-subtle-border" font="system">
+    <token id="surface" value="#0F1115"/><token id="surfaceRaised" value="#171A21"/>
+    <token id="onSurface" value="#E6E8EC"/><token id="onSurfaceMuted" value="#9AA0AB"/>
+    <token id="accent" value="#2F6FED"/><token id="success" value="#2E9E5B"/>
+    <token id="warning" value="#C98A12"/><token id="danger" value="#D64545"/>
+    <token id="neutralClass" value="#7C8595"/>
+    <accessibility minimumTouchDp="48" minimumTextContrast="4.5:1" statusEncoding="icon-and-text-plus-color"/>
+  </style>
+  <illustration productionDefaults="false" source="reference-image">
+    <profile name="Sampah" version="v1"/>
+    <target id="T-024" class="Plastik" block="A2" bin="2" robot="left"/>
+    <robots left="Persiapan" right="Nonaktif"/>
+    <conveyor requested="0.10" actual="0.09" unit="m/s"/>
+    <session motionCompleted="12" pickupUnverified="12" backend="terhubung"/>
+    <camera blocks="A1 A2 A3 B1 B2 B3" detections="Plastik 94%; Kardus 91%"/>
+  </illustration>
+  <constraints>
+    <rule>Enam menu PRD mengatasi label navigasi yang keliru pada render.</rule>
+    <rule>Perubahan profil hanya lewat Model &amp; Kelas dengan guard.</rule>
+    <rule>Hasil gerak tidak membuktikan hasil jepit; keberhasilan perlu verifikasi.</rule>
+    <rule>Putus/pulih koneksi tidak otomatis memulai operasi kembali.</rule>
+    <rule>Skema angka, blok, dan tujuan contoh bukan konfigurasi mesin sah.</rule>
+    <rule>Frame dan model tidak dikirim ke backend.</rule>
+    <rule>Bayangan 3D, bingkai HP, dudukan, judul luar, dan catatan ilustrasi bukan widget aplikasi.</rule>
+  </constraints>
+  <openDependencies ids="B-01 B-03 B-04 B-05 B-06 B-16" physicalVerification="not-performed"/>
+</screenSpec>
