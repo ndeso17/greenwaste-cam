@@ -1,39 +1,46 @@
 # Architecture — Camera
 
 **Repo:** `Camera/`
-**Status:** Draf kerja; stack masih usulan
-**Dokumen terkait:** `PRD.md`, `Design.md`, `Schema.md`, `Rules.md`
+**Status:** Draf kerja; stack **disetujui** 24 Oktober 2026 (D-01)
+**Dokumen terkait:** `PRD.md`, `Design.md`, `Schema.md`, `Rules.md`, `Structure.md`
 
 ## 1. Status stack
 
-Stack di bawah adalah **usulan**, bukan keputusan yang disetujui. Keputusan
-terbuka B-01 pada `.work/FINDINGS.md` root. Implementasi tidak boleh dimulai
-sebelum B-01 ditutup.
+Stack di bawah **disetujui pengguna** sebagai D-01 di `../.work/DECISIONS.md`
+tanggal 24 Oktober 2026. Keputusan ini menutup bagian stack dari B-01; bagian
+**perangkat sasaran tetap terbuka** (`.work/evidence/device-requirements.md`).
 
-| Lapisan | Usulan | Alasan | Alternatif |
+| Lapisan | Keputusan (D-01) | Versi | Alternatif yang tidak dipakai |
 |---|---|---|---|
-| Bahasa | Kotlin | Dukungan ONNX Runtime dan CameraX terbaik di Android | Java |
-| UI | Jetpack Compose | Pratinjau + overlay butuh komposisi dinamis | XML + View |
-| Kamera | CameraX | Menangani rotasi, resolusi, dan lifecycle | Camera2 langsung |
-| Inferensi | ONNX Runtime Mobile | Model induk sudah ONNX | TFLite (perlu konversi) |
-| USB | usb-serial-for-android | CDC/ACM ke ESP32-S3 | Android USB host API langsung |
-| Penyimpanan | DataStore + berkas JSON profil | Konfigurasi kecil, tidak butuh relasi | Room |
-| Build | Gradle wrapper | Baseline `AGENTS.md` bagian 8 | Bazel |
+| Bahasa | Kotlin | 2.0.21 | Java |
+| UI | Jetpack Compose + Material3 | BOM 2024.10.01 | XML + View |
+| Kamera | CameraX | 1.4.0 | Camera2 langsung |
+| Inferensi | ONNX Runtime Android | 1.19.2 | TFLite (perlu konversi) |
+| USB | usb-serial-for-android | 3.8.1 (mulai WP-25) | Android USB host API langsung |
+| Penyimpanan | DataStore Preferences + berkas JSON profil | 1.1.1 | Room |
+| Build | Gradle wrapper, Kotlin DSL, AGP | 8.11.1 / 8.7.3 | Bazel |
+| SDK | compileSdk 35, targetSdk 35, minSdk 26 | — | — |
+| JDK | Toolchain 17 | — | JDK 25 terpasang (tidak didukung AGP 8.7.3) |
+
+Larangan yang tetap berlaku: `usb-serial-for-android` tidak dipakai sebelum
+B-04 menetapkan protokol; angka mesin tidak masuk kode; `ControllerLink`
+tingkat lanjut menunggu B-04 dan B-14.
 
 ## 2. Lapisan
 
 ```
-ui/          Compose screen + overlay
+id.pemilah.ui          Compose screen + overlay
   ↓
-domain/      Target selector, tracker, class→bin mapping, guards
+id.pemilah.domain      Target selector, tracker, class→bin mapping, guards
   ↓
-data/        Profile, config, calibration, telemetry queue
+id.pemilah.data        Profile, config, calibration, telemetry queue
   ↓
-platform/    Camera, ONNX runtime, USB serial, storage
+id.pemilah.platform    Camera, ONNX runtime, USB serial, storage
 ```
 
 Aturan arah dependensi: `ui` → `domain` → `data` → `platform`. Tidak ada
-dependensi balik. `platform` tidak boleh mengimpor `ui`.
+dependensi balik. `platform` tidak boleh mengimpor `ui`. Pemetaan paket ke
+berkas aktual ada di `Structure.md`.
 
 ## 3. Komponen
 
@@ -55,6 +62,10 @@ dependensi balik. `platform` tidak boleh mengimpor `ui`.
 | `ControllerLink` | Transport USB, deteksi putus | Menyimpan status siklus |
 | `TelemetryQueue` | Antrean event ke backend, retry, idempotensi | Menghentikan operasi |
 | `OperationGuard` | Syarat start: kamera, profil, kalibrasi, koneksi | Menggantikan emergency stop |
+
+Pemetaan komponen ke berkas aktual (paket, nama kelas, berkas test) ada di
+`Structure.md` bagian 2. Setiap komponen baru wajib ditambahkan ke tabel itu
+pada WP yang sama.
 
 ## 4. Kepemilikan state
 
@@ -136,6 +147,10 @@ ketersediaan backend.
 
 ## 10. Yang belum diputuskan
 
-B-01 (stack), B-02 (model tujuh kelas), B-03 (geometri), B-04 (protokol),
-B-06 (ambang numerik), B-08 (backend), B-14 (pemilik perhitungan lintasan),
-B-15 (definisi kelas), B-16 (alokasi kelas ke bak).
+B-02 (model tujuh kelas), B-03 (geometri), B-04 (protokol), B-05 (gangguan dan
+pemulihan), B-06 (ambang numerik), B-08 (backend), B-14 (pemilik perhitungan
+lintasan), B-15 (definisi kelas), B-16 (alokasi kelas ke bak), serta bagian
+**perangkat sasaran** dari B-01 (stack sudah disetujui D-01).
+
+Komponen yang bergantung pada butir di atas tetap boleh dibuat kerangkanya,
+tetapi tidak boleh diisi angka, protokol, atau klaim hasil tanpa keputusan.
