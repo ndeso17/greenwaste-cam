@@ -31,8 +31,9 @@ import id.pemilah.PemilahColors
 import id.pemilah.R
 
 /**
- * Kerangka navigasi enam menu (UI-01–UI-06). Setiap tujuan menampilkan keadaan
- * "belum dikonfigurasi" yang jujur; tidak ada data mesin contoh (Design.md §6).
+ * Kerangka navigasi enam menu (UI-01–UI-06) sesuai `OperationScreen.xml`
+ * `navigationRail`. Tujuan selain operasi menampilkan keadaan "belum
+ * dikonfigurasi" secara jujur; tidak ada data mesin contoh (Design.md §6).
  */
 @Composable
 fun AppNavigation(
@@ -48,9 +49,8 @@ fun AppNavigation(
         )
         DestinationContent(
             destination = current,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(24.dp),
+            onNavigate = { current = it },
+            modifier = Modifier.fillMaxSize(),
         )
     }
 }
@@ -98,14 +98,19 @@ private fun NavigationRail(
 @Composable
 private fun DestinationContent(
     destination: AppDestination,
+    onNavigate: (AppDestination) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (destination == AppDestination.OPERATION) {
-        OperationScreen(modifier = modifier)
+        OperationScreen(
+            modifier = modifier,
+            onOpenModels = { onNavigate(AppDestination.MODELS) },
+            onOpenHistory = { onNavigate(AppDestination.HISTORY) },
+        )
         return
     }
     Column(
-        modifier = modifier,
+        modifier = modifier.padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
@@ -115,24 +120,35 @@ private fun DestinationContent(
             fontWeight = FontWeight.SemiBold,
         )
         Text(
-            text = stringResource(
-                if (destination == AppDestination.OPERATION) {
-                    R.string.state_operation_blocked
-                } else {
-                    R.string.state_not_configured
-                },
-            ),
+            text = stringResource(R.string.state_not_configured),
             color = Palette.onSurfaceMuted,
             fontSize = 14.sp,
         )
     }
 }
+
 @Preview(widthDp = 960, heightDp = 540)
 @Composable
 private fun AppNavigationPreview() {
     MaterialTheme(colorScheme = PemilahColors) {
         Surface {
             AppNavigation()
+        }
+    }
+}
+
+@Preview(widthDp = 960, heightDp = 540)
+@Composable
+private fun OperationScreenPreview() {
+    MaterialTheme(colorScheme = PemilahColors) {
+        Surface {
+            OperationScreen(
+                state = OperationUiState(
+                    profileNameAndVersion = null,
+                    calibration = CalibrationUiState.NONE,
+                    session = null,
+                ),
+            )
         }
     }
 }

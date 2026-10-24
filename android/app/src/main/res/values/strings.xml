@@ -11,18 +11,97 @@
     <string name="menu_history">Status &amp; Riwayat</string>
 
     <string name="state_not_configured">Belum dikonfigurasi. Menu ini belum memiliki data sah dan tidak menampilkan angka contoh.</string>
-    <string name="state_operation_blocked">Pemantauan belum dapat dimulai. Profil model, kalibrasi, dan koneksi controller belum tersedia.</string>
 
+    <!-- Header status (OperationScreen.xml: statusHeader) -->
+    <string name="header_profile">Profil</string>
+    <string name="header_camera">Kamera</string>
+    <string name="header_calibration">Kalibrasi</string>
+    <string name="header_usb">USB</string>
+    <string name="header_value_pattern">%1$s: %2$s</string>
+    <string name="header_profile_none">Belum ada profil</string>
+    <string name="header_camera_ready">Aktif</string>
+    <string name="header_camera_starting">Memuat</string>
+    <string name="header_camera_unavailable">Tidak tersedia</string>
+    <string name="header_camera_failed">Gagal</string>
+    <string name="header_calibration_none">Belum dikalibrasi</string>
+    <string name="header_calibration_needs_check">Perlu diperiksa</string>
+    <string name="header_calibration_valid">Sah</string>
+    <string name="header_usb_disconnected">Tidak terhubung</string>
+    <string name="header_usb_connecting">Menghubungkan</string>
+    <string name="header_usb_connected">Terhubung</string>
+    <string name="header_usb_failed">Gagal</string>
+    <string name="header_open_models">Buka Model &amp; Kelas</string>
+
+    <!-- Panel target aktif -->
     <string name="panel_target">Target aktif</string>
-    <string name="panel_robot">Robot</string>
-    <string name="panel_conveyor">Conveyor</string>
-    <string name="panel_session">Ringkasan sesi</string>
     <string name="target_none">Belum ada target</string>
-    <string name="stage3_not_integrated">Belum terintegrasi pada tahap 3</string>
+    <string name="target_field_id">ID</string>
+    <string name="target_field_class">Kelas</string>
+    <string name="target_field_location">Blok / posisi</string>
+    <string name="target_field_destination">Bak · robot</string>
+    <string name="target_label">TARGET</string>
+
+    <!-- Panel robot -->
+    <string name="panel_robot">Robot</string>
+    <string name="robot_left">Kiri</string>
+    <string name="robot_right">Kanan</string>
+    <string name="robot_inactive">Nonaktif</string>
+    <string name="robot_state_ready">Siap</string>
+    <string name="robot_state_preparing">Persiapan</string>
+    <string name="robot_state_picking">Mengambil</string>
+    <string name="robot_state_placing">Meletakkan</string>
+    <string name="robot_state_fault">Gangguan</string>
+    <string name="robot_rule">Robot sibuk tidak menerima siklus baru; kamera tetap aktif.</string>
+
+    <!-- Panel conveyor -->
+    <string name="panel_conveyor">Conveyor</string>
+    <string name="conveyor_requested">Diminta</string>
+    <string name="conveyor_actual">Aktual (encoder)</string>
+    <string name="conveyor_apply">Terapkan</string>
+    <string name="conveyor_no_data">Belum ada data</string>
+    <string name="conveyor_rule">Nilai diminta bukan bukti kecepatan aktual; respons controller menentukan hasil.</string>
+
+    <!-- Ringkasan sesi -->
+    <string name="panel_session">Ringkasan sesi</string>
     <string name="session_empty">Belum ada siklus tercatat</string>
+    <string name="session_motion_completed">Gerak selesai</string>
+    <string name="session_pickup_verified">Pengambilan terverifikasi</string>
+    <string name="session_pickup_unverified">Pengambilan belum terverifikasi</string>
+    <string name="session_pickup_failed">Pengambilan gagal</string>
+    <string name="session_backend">Backend</string>
+    <string name="session_backend_connected">Terhubung</string>
+    <string name="session_backend_unavailable">Tidak tersedia</string>
+    <string name="session_queue">Event tertunda</string>
+    <string name="session_open_history">Riwayat</string>
+    <string name="session_value_none">—</string>
+
+    <!-- Banner guard dan kontrol operasi -->
+    <string name="guard_banner_title">Operasi belum dapat dimulai</string>
+    <string name="guard_reason_camera">Kamera belum siap.</string>
+    <string name="guard_reason_controller">Controller belum terhubung.</string>
+    <string name="guard_reason_profile">Profil model belum sah atau belum dipilih.</string>
+    <string name="guard_reason_no_active_class">Belum ada kelas aktif.</string>
+    <string name="guard_reason_calibration_missing">Kalibrasi kamera belum tersedia.</string>
+    <string name="guard_reason_calibration_needs_check">Kalibrasi perlu diperiksa ulang.</string>
+    <string name="guard_reason_config_incomplete">Konfigurasi mesin belum lengkap.</string>
+    <string name="guard_reason_bin_mapping">Pemetaan kelas ke bak belum lengkap.</string>
+    <string name="operation_start_monitoring">Mulai pemantauan</string>
+    <string name="operation_stop_monitoring">Hentikan pemantauan</string>
+    <string name="operation_start_sorting">Mulai pemilahan</string>
+    <string name="operation_stop_sorting">Hentikan pemilahan</string>
+    <string name="operation_status_stopped">Berhenti</string>
+    <string name="operation_status_running">Berjalan</string>
+    <string name="operation_status_monitoring">Pemantauan aktif</string>
+    <string name="operation_status_sorting_running">Pemilahan berjalan</string>
+    <string name="operation_mode_monitoring">Mode: pemantauan</string>
+    <string name="operation_stop_hint">Tombol ini bukan emergency stop perangkat keras.</string>
+
+    <!-- Kamera -->
     <string name="camera_starting">Kamera sedang dimulai.</string>
     <string name="camera_permission_required">Izin kamera belum diberikan. Pratinjau tidak dapat ditampilkan. Berikan izin kamera untuk melanjutkan.</string>
     <string name="camera_not_available">Kamera tidak tersedia pada perangkat ini. Pratinjau tidak dapat ditampilkan. Periksa perangkat sebelum memulai pemantauan.</string>
     <string name="camera_failed">Kamera gagal dibuka: %1$s. Pratinjau tidak dapat ditampilkan. Periksa perangkat lalu buka ulang aplikasi.</string>
     <string name="action_grant_camera">Berikan izin kamera</string>
+
+    <string name="stage3_not_integrated">Belum terintegrasi pada tahap 3</string>
 </resources>
