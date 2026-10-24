@@ -41,7 +41,7 @@ Arah dependensi: `ui` → `domain` → `data` → `platform`
 | Paket | Isi | Komponen `Architecture.md` §3 | WP |
 |---|---|---|---|
 | `id.pemilah` | `MainActivity`, titik masuk aplikasi | — | WP-08 |
-| `id.pemilah.ui` | Compose screen, navigasi, overlay, ViewModel | — | WP-09, 12, 13, 16, 20, 23, 35 |
+| `id.pemilah.ui` | Compose screen, navigasi, overlay, `OperationUiState` | — | WP-09, 12, 13, 16, 20, 23, 35, WP-57 |
 | `id.pemilah.domain.target` | `TargetSelector` | `TargetSelector` | WP-30, 31 |
 | `id.pemilah.domain.waste` | `WasteClass` (tujuh kelas resmi) | — | WP-50 |
 | `id.pemilah.domain.detection` | `Detection`, `Box` | `Detector` (keluaran) | WP-24, WP-54 |
@@ -50,7 +50,7 @@ Arah dependensi: `ui` → `domain` → `data` → `platform`
 | `id.pemilah.domain.operation` | `OperationGuard`, `StartDecision`, `MachineState` | `OperationGuard` | WP-32, 33, WP-51 |
 | `id.pemilah.domain.calibration` | `CalibrationValidity` | `CalibrationValidity` | WP-19 |
 | `id.pemilah.config` | `MachineConfig` (model + validasi) | — | WP-10 |
-| `id.pemilah.storage` | `ConfigStore` (DataStore) | `ProfileRepository` (sebagian) | WP-11 |
+| `id.pemilah.storage` | `ConfigStore`, `ConfigCodec`, `FileConfigStorage` | `ProfileRepository` (sebagian) | WP-11 |
 | `id.pemilah.model` | `ProfileValidator`, `ModelProfile`, `ProfileImporter`, `ModelSession` | `ProfileValidator`, `ProfileRepository` | WP-14, 15, 16, WP-53 |
 | `id.pemilah.calibration` | `CameraCalibration` | `CameraCalibration` | WP-17, 18 |
 | `id.pemilah.camera` | `CameraSource`, `FramePipeline` | `CameraSource`, `FramePipeline` | WP-21 |
