@@ -282,65 +282,65 @@ private fun SessionSummaryBar(state: OperationUiState, onOpenHistory: () -> Unit
         BoxWithConstraints {
             val showFullLabels = maxWidth >= SessionSummaryFullLabelMinWidth
             Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-            SessionMetric(
-                label = stringResource(R.string.session_motion_completed),
-                fullLabel = stringResource(R.string.session_motion_completed_full),
-                showFullLabel = showFullLabels,
-                value = session?.motionCompleted,
-                tone = StatusTone.MUTED,
-            )
-            SessionMetric(
-                label = stringResource(R.string.session_pickup_verified),
-                fullLabel = stringResource(R.string.session_pickup_verified_full),
-                showFullLabel = showFullLabels,
-                value = session?.pickupVerified,
-                tone = StatusTone.SUCCESS,
-            )
-            SessionMetric(
-                label = stringResource(R.string.session_pickup_unverified),
-                fullLabel = stringResource(R.string.session_pickup_unverified_full),
-                showFullLabel = showFullLabels,
-                value = session?.pickupUnverified,
-                tone = StatusTone.WARNING,
-            )
-            SessionMetric(
-                label = stringResource(R.string.session_pickup_failed),
-                fullLabel = stringResource(R.string.session_pickup_failed_full),
-                showFullLabel = showFullLabels,
-                value = session?.pickupFailed,
-                tone = StatusTone.DANGER,
-            )
-            SessionMetric(
-                label = stringResource(R.string.session_queue),
-                fullLabel = stringResource(R.string.session_queue_full),
-                showFullLabel = showFullLabels,
-                value = state.pendingEvents,
-                tone = if (state.pendingEvents != null && state.pendingEvents > 0) {
-                    StatusTone.WARNING
-                } else {
-                    StatusTone.MUTED
-                },
-            )
-            Spacer(modifier = Modifier.weight(1f))
-            StatusChip(
-                label = stringResource(R.string.session_backend),
-                value = stringResource(
-                    when (state.backend) {
-                        BackendUiState.CONNECTED -> R.string.session_backend_connected
-                        BackendUiState.UNAVAILABLE -> R.string.session_backend_unavailable
-                        BackendUiState.UNKNOWN -> R.string.session_value_none
+                SessionMetric(
+                    label = stringResource(R.string.session_motion_completed),
+                    fullLabel = stringResource(R.string.session_motion_completed_full),
+                    showFullLabel = showFullLabels,
+                    value = session?.motionCompleted,
+                    tone = StatusTone.MUTED,
+                )
+                SessionMetric(
+                    label = stringResource(R.string.session_pickup_verified),
+                    fullLabel = stringResource(R.string.session_pickup_verified_full),
+                    showFullLabel = showFullLabels,
+                    value = session?.pickupVerified,
+                    tone = StatusTone.SUCCESS,
+                )
+                SessionMetric(
+                    label = stringResource(R.string.session_pickup_unverified),
+                    fullLabel = stringResource(R.string.session_pickup_unverified_full),
+                    showFullLabel = showFullLabels,
+                    value = session?.pickupUnverified,
+                    tone = StatusTone.WARNING,
+                )
+                SessionMetric(
+                    label = stringResource(R.string.session_pickup_failed),
+                    fullLabel = stringResource(R.string.session_pickup_failed_full),
+                    showFullLabel = showFullLabels,
+                    value = session?.pickupFailed,
+                    tone = StatusTone.DANGER,
+                )
+                SessionMetric(
+                    label = stringResource(R.string.session_queue),
+                    fullLabel = stringResource(R.string.session_queue_full),
+                    showFullLabel = showFullLabels,
+                    value = state.pendingEvents,
+                    tone = if (state.pendingEvents != null && state.pendingEvents > 0) {
+                        StatusTone.WARNING
+                    } else {
+                        StatusTone.MUTED
                     },
-                ),
-                tone = when (state.backend) {
-                    BackendUiState.CONNECTED -> StatusTone.SUCCESS
-                    BackendUiState.UNAVAILABLE -> StatusTone.WARNING
-                    BackendUiState.UNKNOWN -> StatusTone.MUTED
-                },
-            )
-            SecondaryAction(
-                label = stringResource(R.string.session_open_history),
-                onClick = onOpenHistory,
-            )
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                StatusChip(
+                    label = stringResource(R.string.session_backend),
+                    value = stringResource(
+                        when (state.backend) {
+                            BackendUiState.CONNECTED -> R.string.session_backend_connected
+                            BackendUiState.UNAVAILABLE -> R.string.session_backend_unavailable
+                            BackendUiState.UNKNOWN -> R.string.session_value_none
+                        },
+                    ),
+                    tone = when (state.backend) {
+                        BackendUiState.CONNECTED -> StatusTone.SUCCESS
+                        BackendUiState.UNAVAILABLE -> StatusTone.WARNING
+                        BackendUiState.UNKNOWN -> StatusTone.MUTED
+                    },
+                )
+                SecondaryAction(
+                    label = stringResource(R.string.session_open_history),
+                    onClick = onOpenHistory,
+                )
             }
         }
         if (session == null) {
