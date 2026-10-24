@@ -64,14 +64,19 @@
     <!-- Ringkasan sesi -->
     <string name="panel_session">Ringkasan sesi</string>
     <string name="session_empty">Belum ada siklus tercatat</string>
-    <string name="session_motion_completed">Gerak selesai</string>
-    <string name="session_pickup_verified">Pengambilan terverifikasi</string>
-    <string name="session_pickup_unverified">Pengambilan belum terverifikasi</string>
-    <string name="session_pickup_failed">Pengambilan gagal</string>
+    <string name="session_motion_completed">GS</string>
+    <string name="session_motion_completed_full">Gerak selesai</string>
+    <string name="session_pickup_verified">PT</string>
+    <string name="session_pickup_verified_full">Pengambilan terverifikasi</string>
+    <string name="session_pickup_unverified">PBT</string>
+    <string name="session_pickup_unverified_full">Pengambilan belum terverifikasi</string>
+    <string name="session_pickup_failed">PG</string>
+    <string name="session_pickup_failed_full">Pengambilan gagal</string>
     <string name="session_backend">Backend</string>
     <string name="session_backend_connected">Terhubung</string>
     <string name="session_backend_unavailable">Tidak tersedia</string>
-    <string name="session_queue">Event tertunda</string>
+    <string name="session_queue">ET</string>
+    <string name="session_queue_full">Event tertunda</string>
     <string name="session_open_history">Riwayat</string>
     <string name="session_value_none">—</string>
 

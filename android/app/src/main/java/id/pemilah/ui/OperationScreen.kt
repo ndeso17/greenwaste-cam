@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -62,7 +63,8 @@ fun OperationScreen(
     onStart: () -> Unit = {},
     onStop: () -> Unit = {},
 ) {
-    val ui = state ?: rememberDefaultOperationState()
+    var liveCameraStatus by remember { mutableStateOf<CameraStatus>(CameraStatus.Starting) }
+    val ui = (state ?: rememberDefaultOperationState()).copy(cameraStatus = liveCameraStatus)
     val blockers = StartGuardProjection.blockers(ui)
     Column(modifier = modifier.fillMaxSize()) {
         StatusHeader(state = ui, onOpenModels = onOpenModels)
@@ -76,6 +78,8 @@ fun OperationScreen(
             ) {
                 CameraStage(
                     state = ui,
+                    cameraStatus = liveCameraStatus,
+                    onCameraStatusChange = { liveCameraStatus = it },
                     modifier = Modifier.weight(1f).fillMaxWidth(),
                 )
                 SessionSummaryBar(
@@ -174,7 +178,12 @@ private fun StatusHeader(state: OperationUiState, onOpenModels: () -> Unit) {
 }
 
 @Composable
-private fun CameraStage(state: OperationUiState, modifier: Modifier = Modifier) {
+private fun CameraStage(
+    state: OperationUiState,
+    cameraStatus: CameraStatus,
+    onCameraStatusChange: (CameraStatus) -> Unit,
+    modifier: Modifier = Modifier,
+) {
     Box(
         modifier = modifier
             .background(Palette.surfaceRaised, RoundedCornerShape(12.dp))
@@ -187,7 +196,6 @@ private fun CameraStage(state: OperationUiState, modifier: Modifier = Modifier) 
                     PackageManager.PERMISSION_GRANTED,
             )
         }
-        var cameraStatus by remember { mutableStateOf<CameraStatus>(CameraStatus.Starting) }
         val launcher = rememberLauncherForActivityResult(
             contract = ActivityResultContracts.RequestPermission(),
         ) { granted -> permissionGranted = granted }
@@ -195,7 +203,7 @@ private fun CameraStage(state: OperationUiState, modifier: Modifier = Modifier) 
         CameraPreview(
             hasPermission = permissionGranted,
             modifier = Modifier.fillMaxSize(),
-            onStatusChange = { cameraStatus = it },
+            onStatusChange = onCameraStatusChange,
         )
         // Overlay hanya menggambar data yang benar-benar ada; saat ini belum ada
         // geometri terkalibrasi sehingga tidak ada kotak atau blok yang dikarang.
@@ -268,41 +276,51 @@ private fun SessionSummaryBar(state: OperationUiState, onOpenHistory: () -> Unit
         modifier = Modifier.fillMaxWidth(),
     ) {
         val session = state.session
-        Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
+        // Ambang diukur dari lebar baris ringkasan itu sendiri, bukan dari kelas
+        // perangkat: HP landscape (±600 dp) tetap memakai singkatan, layar lebar
+        // seperti tablet memakai label penuh. Lihat Design.md §4.4.
+        BoxWithConstraints {
+            val showFullLabels = maxWidth >= SessionSummaryFullLabelMinWidth
+            Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
             SessionMetric(
                 label = stringResource(R.string.session_motion_completed),
+                fullLabel = stringResource(R.string.session_motion_completed_full),
+                showFullLabel = showFullLabels,
                 value = session?.motionCompleted,
                 tone = StatusTone.MUTED,
             )
             SessionMetric(
                 label = stringResource(R.string.session_pickup_verified),
+                fullLabel = stringResource(R.string.session_pickup_verified_full),
+                showFullLabel = showFullLabels,
                 value = session?.pickupVerified,
                 tone = StatusTone.SUCCESS,
             )
             SessionMetric(
                 label = stringResource(R.string.session_pickup_unverified),
+                fullLabel = stringResource(R.string.session_pickup_unverified_full),
+                showFullLabel = showFullLabels,
                 value = session?.pickupUnverified,
                 tone = StatusTone.WARNING,
             )
             SessionMetric(
                 label = stringResource(R.string.session_pickup_failed),
+                fullLabel = stringResource(R.string.session_pickup_failed_full),
+                showFullLabel = showFullLabels,
                 value = session?.pickupFailed,
                 tone = StatusTone.DANGER,
             )
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = stringResource(R.string.session_queue),
-                    color = Palette.onSurfaceMuted,
-                    fontSize = 12.sp,
-                )
-                Text(
-                    text = state.pendingEvents?.toString()
-                        ?: stringResource(R.string.session_value_none),
-                    color = Palette.onSurface,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.SemiBold,
-                )
-            }
+            SessionMetric(
+                label = stringResource(R.string.session_queue),
+                fullLabel = stringResource(R.string.session_queue_full),
+                showFullLabel = showFullLabels,
+                value = state.pendingEvents,
+                tone = if (state.pendingEvents != null && state.pendingEvents > 0) {
+                    StatusTone.WARNING
+                } else {
+                    StatusTone.MUTED
+                },
+            )
             Spacer(modifier = Modifier.weight(1f))
             StatusChip(
                 label = stringResource(R.string.session_backend),
@@ -323,6 +341,7 @@ private fun SessionSummaryBar(state: OperationUiState, onOpenHistory: () -> Unit
                 label = stringResource(R.string.session_open_history),
                 onClick = onOpenHistory,
             )
+            }
         }
         if (session == null) {
             PlaceholderText(text = stringResource(R.string.session_empty))
@@ -331,14 +350,31 @@ private fun SessionSummaryBar(state: OperationUiState, onOpenHistory: () -> Unit
 }
 
 @Composable
-private fun SessionMetric(label: String, value: Int?, tone: StatusTone) {
-    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+private fun SessionMetric(
+    label: String,
+    fullLabel: String,
+    value: Int?,
+    tone: StatusTone,
+    showFullLabel: Boolean = false,
+) {
+    // Singkatan tampil di layar; `fullLabel` menjadi deskripsi pembaca layar agar
+    // makna status tidak hilang (Design.md §7: status wajib punya teks bermakna).
+    Column(
+        modifier = Modifier.statusDescription("$fullLabel: ${value ?: "-"}"),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             StatusIcon(tone)
-            Text(text = label, color = Palette.onSurfaceMuted, fontSize = 12.sp)
+            Text(
+                text = if (showFullLabel) fullLabel else label,
+                color = Palette.onSurfaceMuted,
+                fontSize = if (showFullLabel) 12.sp else 14.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+            )
         }
         Text(
             text = value?.toString() ?: stringResource(R.string.session_value_none),
@@ -529,7 +565,7 @@ private fun OperationControls(
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
         )
-        if (blockers.isNotEmpty()) {
+        run {
             Text(
                 text = stringResource(R.string.operation_stop_hint),
                 color = Palette.onSurfaceMuted,
@@ -538,6 +574,13 @@ private fun OperationControls(
         }
     }
 }
+
+/**
+ * Lebar minimum baris ringkasan untuk menampilkan label panjang. Nilai ini
+ * ukuran tata letak (bukan angka mesin): di bawahnya label penuh tidak muat
+ * bersama lima metrik, status backend, dan tombol Riwayat.
+ */
+internal val SessionSummaryFullLabelMinWidth: androidx.compose.ui.unit.Dp = 880.dp
 
 private fun CameraStatus.labelRes(): Int = when (this) {
     CameraStatus.Ready -> R.string.header_camera_ready
