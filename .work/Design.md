@@ -217,8 +217,10 @@ diperkecil (UI-07). Aturan keadaan rail:
 | Terbuka | 232 dp | Ikon 24 dp + label 14 sp; judul aplikasi tampil |
 | Tertutup | 72 dp | Hanya ikon 24 dp; label dan judul aplikasi disembunyikan |
 
-- Ikon kendali lipat berada di puncak rail, di luar daftar yang dapat digulir,
-  sehingga selalu terjangkau tanpa menggulir.
+- Ikon kendali lipat berada di puncak rail, **sebaris dengan judul aplikasi**
+  ("Pemilah Objek"), dan di luar daftar yang dapat digulir, sehingga selalu
+  terjangkau tanpa menggulir. Saat rail tertutup, tombol itu berada di tengah
+  rail agar sejajar dengan ikon tujuan di bawahnya; judul aplikasi disembunyikan.
 - Target sentuh baris tujuan dan tombol lipat minimal 48 dp pada kedua keadaan.
 - Saat tertutup, label penuh tetap menjadi `contentDescription` tiap tujuan dan
   tombol lipat menyebut aksinya ("Perkecil navigasi"/"Perbesar navigasi").

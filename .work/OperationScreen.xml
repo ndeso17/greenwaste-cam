@@ -8,7 +8,7 @@
   <bindings semantics="UI projections only" defaultWhenAbsent="Belum ada data"/>
   <layout flow="horizontal" safeInsets="respect-system-bars-and-display-cutouts">
     <navigation id="navigationRail" placement="left" selected="operation" requirement="UI-01 UI-02 UI-03 UI-04 UI-05 UI-06 UI-07" wp="WP-09 WP-60 WP-61" decision="D-UI-02 D-05" collapsible="true" widthExpanded="232dp" widthCollapsed="72dp">
-      <toggle id="railToggle" placement="top-of-rail-outside-scroll" intent="toggle-rail" icon="chevron-left-when-expanded chevron-right-when-collapsed" descriptionBinding="nav.collapseLabel nav.expandLabel" minimumTouchDp="48" requirement="UI-07"/>
+      <toggle id="railToggle" placement="rail-header-row-aligned-with-appTitle; outside-scroll" intent="toggle-rail" icon="chevron-left-when-expanded chevron-right-when-collapsed" descriptionBinding="nav.collapseLabel nav.expandLabel" minimumTouchDp="48" requirement="UI-07"/>
       <item id="operation" label="Operasi" prdLabel="Kamera / Operasi" icon="rounded-photo-camera"/>
       <item id="models" label="Models" prdLabel="Model &amp; Kelas" icon="rounded-model-training"/>
       <item id="bins" label="Bot" prdLabel="Bak &amp; Robot" icon="rounded-smart-toy"/>

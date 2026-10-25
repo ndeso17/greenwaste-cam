@@ -100,17 +100,29 @@ private fun NavigationRail(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        RailToggleButton(expanded = expanded, onToggle = onToggle)
-        if (expanded) {
-            Text(
-                text = stringResource(R.string.app_title),
-                color = Palette.onSurface,
-                fontSize = 20.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-            )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            // Tertutup: tombol di tengah agar sejajar dengan ikon tujuan di
+            // bawahnya. Terbuka: judul mengisi sisa lebar, tombol di kanan.
+            horizontalArrangement = if (expanded) Arrangement.End else Arrangement.Center,
+        ) {
+            if (expanded) {
+                Text(
+                    text = stringResource(R.string.app_title),
+                    color = Palette.onSurface,
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp),
+                )
+            }
+            // Tombol lipat sebaris dengan judul aplikasi, di puncak rail dan di
+            // luar daftar tujuan yang dapat digulir (D-UI-02 butir 4, UI-07).
+            RailToggleButton(expanded = expanded, onToggle = onToggle)
         }
         // Hanya daftar tujuan yang dapat digulir, sehingga tombol lipat di atas
         // tidak pernah keluar layar.
