@@ -222,6 +222,12 @@ diperkecil (UI-07). Aturan keadaan rail:
 - Target sentuh baris tujuan dan tombol lipat minimal 48 dp pada kedua keadaan.
 - Saat tertutup, label penuh tetap menjadi `contentDescription` tiap tujuan dan
   tombol lipat menyebut aksinya ("Perkecil navigasi"/"Perbesar navigasi").
+- Nama aksesibilitas memakai **label yang terlihat**, bukan label PRD induk pada
+  `.work/PRD.md` §6.6. Alasannya WCAG 2.5.3 *Label in Name*: nama aksesibilitas
+  wajib memuat teks yang terbaca, supaya pengguna Voice Access yang mengucap
+  "tap Models" atau "tap Logs" tetap menemukan kontrolnya. Pemetaan label PRD →
+  label tampilan tetap dicatat di §6.6 dan pada atribut `prdLabel`
+  `OperationScreen.xml`, tetapi tidak dipakai sebagai nama aksesibilitas.
 - Ikon memakai `tint` warna terpilih/tidak terpilih; keadaan terpilih juga
   dibedakan oleh latar, bukan warna ikon saja (Design.md §7).
 

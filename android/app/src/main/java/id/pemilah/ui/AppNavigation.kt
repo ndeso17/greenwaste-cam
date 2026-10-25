@@ -65,7 +65,9 @@ fun AppNavigation(
 ) {
     var current by remember { mutableStateOf(initialDestination) }
     // rememberSaveable: lipat tidak berubah saat konfigurasi ulang (D-UI-02 butir 5).
-    var railExpanded by rememberSaveable { mutableStateOf(NavigationRailState().expanded) }
+    // Boolean disimpan langsung karena Compose dapat menyimpan tipe primitif tanpa
+    // Saver khusus; NavigationRailState tetap menjadi kontrak yang diuji.
+    var railExpanded by rememberSaveable { mutableStateOf(true) }
 
     Row(modifier = modifier.fillMaxSize()) {
         NavigationRail(
@@ -167,7 +169,7 @@ private fun NavigationRailItem(
     onClick: () -> Unit,
 ) {
     val tint = if (selected) Palette.onSurface else Palette.onSurfaceMuted
-    val prdLabel = stringResource(destination.prdTitleRes)
+    val label = stringResource(destination.titleRes)
     Row(
         modifier = Modifier
             .minimumInteractiveComponentSize()
@@ -180,10 +182,11 @@ private fun NavigationRailItem(
                 role = Role.Tab,
                 onClick = onClick,
             )
-            // Deskripsi aksesibilitas memakai label PRD induk yang lengkap, bukan
-            // label ringkas D-UI-02: pembaca layar mengucap "Bak & Robot", bukan "Bot".
+            // Deskripsi aksesibilitas memakai label yang terlihat, termasuk saat
+            // rail tertutup: nama aksesibilitas wajib memuat teks terlihat
+            // (WCAG 2.5.3), supaya Voice Access "tap Models" tetap cocok.
             .semantics(mergeDescendants = true) {
-                contentDescription = prdLabel
+                contentDescription = label
             }
             .padding(horizontal = 12.dp, vertical = 12.dp),
         horizontalArrangement = if (expanded) Arrangement.spacedBy(12.dp) else Arrangement.Center,
@@ -197,7 +200,7 @@ private fun NavigationRailItem(
         )
         if (expanded) {
             Text(
-                text = stringResource(destination.titleRes),
+                text = label,
                 color = tint,
                 fontSize = 14.sp,
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,

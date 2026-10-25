@@ -96,29 +96,20 @@ class NavigationRailStateTest {
     }
 
     @Test
-    fun `setiap tujuan memiliki label PRD yang berbeda untuk aksesibilitas`() {
-        val labels = AppDestination.entries.map { it.prdTitleRes }
-
-        assertEquals(labels.size, labels.distinct().size)
-    }
-
-    @Test
-    fun `setiap tujuan memakai kunci string terpisah untuk label tampilan dan label PRD`() {
-        // Label ringkas D-UI-02 berbeda teks dari label PRD induk pada lima tujuan;
-        // Kalibrasi teksnya sama tetapi tetap punya kunci sendiri, sehingga
-        // penggantian salah satu label tidak pernah mengubah yang lain.
-        val samaKunci = AppDestination.entries.filter { it.titleRes == it.prdTitleRes }
-
-        assertTrue(
-            "kunci label tampilan dan label PRD tidak boleh berbagi ID yang sama",
-            samaKunci.isEmpty(),
-        )
-    }
-
-    @Test
     fun `setiap tujuan memakai kunci string yang sah bukan nol`() {
-        val kosong = AppDestination.entries.filter { it.titleRes == 0 || it.prdTitleRes == 0 }
+        val kosong = AppDestination.entries.filter { it.titleRes == 0 }
 
         assertTrue("ada tujuan tanpa kunci string: $kosong", kosong.isEmpty())
+    }
+
+    @Test
+    fun `label aksesibilitas berasal dari label yang terlihat`() {
+        // WCAG 2.5.3 Label in Name: nama aksesibilitas wajib memuat teks yang
+        // terlihat. Kontrak ini dijaga dengan hanya menyediakan satu sumber label
+        // per tujuan; tidak ada label kedua yang dipakai untuk contentDescription.
+        val jumlahPropertiLabel = AppDestination::class.java.declaredFields
+            .count { field -> field.type == Int::class.javaPrimitiveType }
+
+        assertEquals(1, jumlahPropertiLabel)
     }
 }

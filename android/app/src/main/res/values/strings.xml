@@ -12,16 +12,6 @@
     <string name="menu_calibration">Kalibrasi</string>
     <string name="menu_history">Logs</string>
 
-    <!-- Label PRD induk untuk keenam tujuan. Dipakai sebagai deskripsi
-         aksesibilitas rail yang diperkecil, supaya singkatan tidak menghilangkan
-         makna requirement aslinya. -->
-    <string name="menu_operation_prd">Kamera / Operasi</string>
-    <string name="menu_models_prd">Model &amp; Kelas</string>
-    <string name="menu_bins_prd">Bak &amp; Robot</string>
-    <string name="menu_machine_prd">Pengaturan Mesin</string>
-    <string name="menu_calibration_prd">Kalibrasi</string>
-    <string name="menu_history_prd">Status &amp; Riwayat</string>
-
     <!-- Kendali lipat rail navigasi (UI-07) -->
     <string name="nav_collapse">Perkecil navigasi</string>
     <string name="nav_expand">Perbesar navigasi</string>
