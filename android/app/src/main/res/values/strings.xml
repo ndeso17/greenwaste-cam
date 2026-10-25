@@ -3,12 +3,24 @@
     <string name="app_name">Pemilah Objek</string>
     <string name="app_title">Pemilah Objek</string>
 
-    <string name="menu_operation">Kamera / Operasi</string>
-    <string name="menu_models">Model &amp; Kelas</string>
-    <string name="menu_bins">Bak &amp; Robot</string>
-    <string name="menu_machine">Pengaturan Mesin</string>
+    <!-- Label tampilan rail navigasi — D-UI-02. Isi tiap tujuan tetap mengikuti
+         enam menu PRD induk bagian 9 (UI-01–UI-06); lihat Camera/.work/PRD.md §6.6. -->
+    <string name="menu_operation">Operasi</string>
+    <string name="menu_models">Models</string>
+    <string name="menu_bins">Bot</string>
+    <string name="menu_machine">Settings</string>
     <string name="menu_calibration">Kalibrasi</string>
-    <string name="menu_history">Status &amp; Riwayat</string>
+    <string name="menu_history">Logs</string>
+
+    <!-- Label PRD induk untuk keenam tujuan. Dipakai sebagai deskripsi
+         aksesibilitas rail yang diperkecil, supaya singkatan tidak menghilangkan
+         makna requirement aslinya. -->
+    <string name="menu_operation_prd">Kamera / Operasi</string>
+    <string name="menu_models_prd">Model &amp; Kelas</string>
+    <string name="menu_bins_prd">Bak &amp; Robot</string>
+    <string name="menu_machine_prd">Pengaturan Mesin</string>
+    <string name="menu_calibration_prd">Kalibrasi</string>
+    <string name="menu_history_prd">Status &amp; Riwayat</string>
 
     <string name="state_not_configured">Belum dikonfigurasi. Menu ini belum memiliki data sah dan tidak menampilkan angka contoh.</string>
 
