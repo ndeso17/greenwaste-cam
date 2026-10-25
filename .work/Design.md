@@ -177,7 +177,7 @@ mockup tidak mengubah enam menu PRD atau mengesahkan data contoh sebagai nilai m
 
 | ID stabil | Posisi dan ukuran relatif | Isi / perilaku |
 |---|---|---|
-| `navigationRail` | Kiri, sepanjang tinggi konten | Enam menu PRD; Kamera / Operasi aktif |
+| `navigationRail` | Kiri, sepanjang tinggi konten | Enam tujuan (label D-UI-02); dapat diperkecil 232 dp ⇄ 72 dp; berikon; Operasi aktif |
 | `statusHeader` | Atas, setelah rail | Nama aplikasi, profil aktif, kamera, kalibrasi, USB |
 | `cameraStage` | Kolom utama kiri, area terbesar | Frame, area kerja, grid blok, deteksi, target |
 | `targetPanel` | Kanan atas | ID target, kelas, blok/posisi, bak dan robot tujuan |
@@ -194,11 +194,38 @@ sebelum perangkat tersedia. Pertahankan urutan panel dan akses kontrol saat
 teks diperbesar; isi kartu boleh menggulir tanpa menggulir tombol Hentikan keluar
 layar. Jangan menutup kamera dengan kartu mesin.
 
-Enam tujuan navigasi adalah Kamera / Operasi, Model & Kelas, Bak & Robot,
-Pengaturan Mesin, Kalibrasi, Status & Riwayat. Render memakai label
-Kamera/Operasi/Data/Pengaturan/Log/Tentang: **label tersebut bukan daftar menu
-implementasi**. Akses Riwayat menuju Status & Riwayat, bukan menu ketujuh.
-Header profil adalah identitas dan pintasan ke Model & Kelas; bentuk mirip
+Pengecualian aturan di atas: perangkat uji sudah tersedia (B-01 sebagian selesai,
+lihat `.work/evidence/device-requirements.md`), sehingga dua lebar rail pada
+tabel keadaan rail di bawah ini ditetapkan sebagai nilai tetap sesuai D-UI-02,
+dan ambang label ringkasan sesi diukur dari lebar barisnya sendiri. Keduanya
+bukan angka mesin dan tidak berasal dari PRD.
+
+Enam tujuan navigasi adalah Operasi, Models, Bot, Settings, Kalibrasi, Logs
+(`D-UI-02`, 24 Oktober 2026). Isinya tetap enam menu PRD induk bagian 9 dalam
+urutan yang sama: UI-01 Operasi (kamera), UI-02 Models (profil/kelas), UI-03 Bot
+(pemetaan bak/robot), UI-04 Settings (konfigurasi mesin), UI-05 Kalibrasi,
+UI-06 Logs (status/riwayat). Label tampilan tidak mengganti requirement: "Bot"
+tetap berarti Bak dan Robot, "Logs" tetap mencakup Status & Riwayat. Render
+memakai label Kamera/Operasi/Data/Pengaturan/Log/Tentang: **label tersebut bukan
+daftar menu implementasi**. Akses Riwayat menuju Logs, bukan menu ketujuh.
+
+Setiap tujuan wajib berikon (`Icons.Rounded`, `D-05`) dan rail wajib dapat
+diperkecil (UI-07). Aturan keadaan rail:
+
+| Keadaan | Lebar | Tampilan |
+|---|---|---|
+| Terbuka | 232 dp | Ikon 24 dp + label 14 sp; judul aplikasi tampil |
+| Tertutup | 72 dp | Hanya ikon 24 dp; label dan judul aplikasi disembunyikan |
+
+- Ikon kendali lipat berada di puncak rail, di luar daftar yang dapat digulir,
+  sehingga selalu terjangkau tanpa menggulir.
+- Target sentuh baris tujuan dan tombol lipat minimal 48 dp pada kedua keadaan.
+- Saat tertutup, label penuh tetap menjadi `contentDescription` tiap tujuan dan
+  tombol lipat menyebut aksinya ("Perkecil navigasi"/"Perbesar navigasi").
+- Ikon memakai `tint` warna terpilih/tidak terpilih; keadaan terpilih juga
+  dibedakan oleh latar, bukan warna ikon saja (Design.md §7).
+
+Header profil adalah identitas dan pintasan ke Models; bentuk mirip
 pemilih pada render tidak mengizinkan pergantian profil saat operasi berjalan.
 
 Gunakan permukaan gelap dan kartu bersudut membulat, pemisah tipis, ikon

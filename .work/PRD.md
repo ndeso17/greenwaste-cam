@@ -29,7 +29,8 @@ Aplikasi ini adalah satu-satunya antarmuka operator ke mesin.
 Kamera dan pratinjau, inferensi ONNX lokal, decoding deteksi, pelacakan identitas
 objek, pemilihan target, pemetaan kelas ke bak, profil model, kalibrasi kamera,
 konfigurasi mesin, kontrak pesan ke controller, antrean telemetri ke backend,
-dan enam menu aplikasi.
+enam menu aplikasi, dan kelengkapan antarmuka navigasi (ikon dan perilaku lipat,
+UI-07).
 
 ### 3.2 Tidak termasuk
 
@@ -136,9 +137,32 @@ COM-07–09 adalah kebutuhan tambahan dari perluasan lingkup backend
 
 ### 6.6 Menu aplikasi
 
-Enam menu PRD induk bagian 9 tetap: Kamera/Operasi, Model & Kelas, Bak & Robot,
-Pengaturan Mesin, Kalibrasi, Status & Riwayat. Status & Riwayat diperluas dengan
-ringkasan sesi dan riwayat siklus dari backend.
+Enam menu PRD induk bagian 9 tetap menjadi enam tujuan, dengan **label tampilan**
+mengikuti `D-UI-02` (instruksi pengguna 24 Oktober 2026). Isi tiap tujuan tidak
+berubah; hanya teks label, ikon, dan perilaku lipat rail yang ditambahkan.
+
+| Requirement | Menu PRD induk bagian 9 | Label tampilan (D-UI-02) | Isi utama |
+|---|---|---|---|
+| UI-01 | Kamera / Operasi | Operasi | Pratinjau, deteksi, blok, target aktif, status robot, kecepatan, mulai/hentikan |
+| UI-02 | Model & Kelas | Models | Impor profil, pilih model, ambang keyakinan, aturan kelompok |
+| UI-03 | Bak & Robot | Bot | Pemetaan kelas ke bak, robot aktif, bak yang dapat dilayani |
+| UI-04 | Pengaturan Mesin | Settings | Dimensi lintasan, panjang ruas, posisi robot, gripper, batas kecepatan |
+| UI-05 | Kalibrasi | Kalibrasi | Kamera, encoder, base, sendi, area pengambilan, posisi bak |
+| UI-06 | Status & Riwayat | Logs | Koneksi, gangguan, perintah, hasil siklus, ringkasan sesi, riwayat dari backend |
+
+Label tampilan boleh berubah tanpa mengubah requirement: `UI-03` tetap
+mewajibkan pemetaan kelas ke bak dan status robot, meskipun labelnya "Bot".
+PRD induk tidak diubah oleh keputusan ini.
+
+### 6.7 Kebutuhan tambahan repo ini
+
+| ID | Kebutuhan | Kriteria terima |
+|---|---|---|
+| UI-07 | Rail navigasi berikon dan dapat diperkecil/diperbesar; saat diperkecil hanya ikon yang tampil | Rail terbuka menampilkan ikon + label; rail tertutup hanya ikon; label penuh tetap tersedia sebagai deskripsi aksesibilitas; perpindahan tujuan berfungsi pada kedua keadaan |
+
+UI-07 adalah kebutuhan tambahan repo seperti preseden COM-07–COM-09; bukan ID
+PRD induk dan tidak menggantikannya. Sumber: instruksi pengguna 24 Oktober 2026,
+dicatat sebagai `D-UI-02` dan `D-05`.
 
 ## 7. Kebutuhan nonfungsional
 

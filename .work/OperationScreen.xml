@@ -7,13 +7,15 @@
   <scope>Spesifikasi visual; bukan kode Android, protokol, atau persetujuan stack.</scope>
   <bindings semantics="UI projections only" defaultWhenAbsent="Belum ada data"/>
   <layout flow="horizontal" safeInsets="respect-system-bars-and-display-cutouts">
-    <navigation id="navigationRail" placement="left" selected="operation" requirement="UI-01 UI-02 UI-03 UI-04 UI-05 UI-06" wp="WP-09">
-      <item id="operation" label="Kamera / Operasi"/>
-      <item id="models" label="Model &amp; Kelas"/>
-      <item id="bins" label="Bak &amp; Robot"/>
-      <item id="machine" label="Pengaturan Mesin"/>
-      <item id="calibration" label="Kalibrasi"/>
-      <item id="history" label="Status &amp; Riwayat"/>
+    <navigation id="navigationRail" placement="left" selected="operation" requirement="UI-01 UI-02 UI-03 UI-04 UI-05 UI-06 UI-07" wp="WP-09 WP-60 WP-61" decision="D-UI-02 D-05" collapsible="true" widthExpanded="232dp" widthCollapsed="72dp">
+      <toggle id="railToggle" placement="top-of-rail-outside-scroll" intent="toggle-rail" icon="chevron-left-when-expanded chevron-right-when-collapsed" descriptionBinding="nav.collapseLabel nav.expandLabel" minimumTouchDp="48" requirement="UI-07"/>
+      <item id="operation" label="Operasi" prdLabel="Kamera / Operasi" icon="rounded-photo-camera"/>
+      <item id="models" label="Models" prdLabel="Model &amp; Kelas" icon="rounded-model-training"/>
+      <item id="bins" label="Bot" prdLabel="Bak &amp; Robot" icon="rounded-smart-toy"/>
+      <item id="machine" label="Settings" prdLabel="Pengaturan Mesin" icon="rounded-settings"/>
+      <item id="calibration" label="Kalibrasi" prdLabel="Kalibrasi" icon="rounded-center-focus-strong"/>
+      <item id="history" label="Logs" prdLabel="Status &amp; Riwayat" icon="rounded-receipt-long"/>
+      <state id="collapsed" shows="icons-only" hides="labels appTitle" keeps="contentDescription-of-full-label selected-indicator"/>
     </navigation>
     <content flow="vertical" placement="right-of-navigationRail">
       <header id="statusHeader" placement="top">
@@ -108,6 +110,8 @@
   </illustration>
   <constraints>
     <rule>Enam menu PRD mengatasi label navigasi yang keliru pada render.</rule>
+    <rule>Label tampilan rail mengikuti D-UI-02 (Operasi, Models, Bot, Settings, Kalibrasi, Logs) dan tidak mengganti requirement UI-01–UI-06.</rule>
+    <rule>Rail wajib berikon dan dapat diperkecil; saat tertutup hanya ikon yang tampil, label penuh tetap tersedia sebagai deskripsi aksesibilitas (UI-07).</rule>
     <rule>Perubahan profil hanya lewat Model &amp; Kelas dengan guard.</rule>
     <rule>Hasil gerak tidak membuktikan hasil jepit; keberhasilan perlu verifikasi.</rule>
     <rule>Putus/pulih koneksi tidak otomatis memulai operasi kembali.</rule>
