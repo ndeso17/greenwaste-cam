@@ -22,6 +22,10 @@
     <string name="menu_calibration_prd">Kalibrasi</string>
     <string name="menu_history_prd">Status &amp; Riwayat</string>
 
+    <!-- Kendali lipat rail navigasi (UI-07) -->
+    <string name="nav_collapse">Perkecil navigasi</string>
+    <string name="nav_expand">Perbesar navigasi</string>
+
     <string name="state_not_configured">Belum dikonfigurasi. Menu ini belum memiliki data sah dan tidak menampilkan angka contoh.</string>
 
     <!-- Header status (OperationScreen.xml: statusHeader) -->

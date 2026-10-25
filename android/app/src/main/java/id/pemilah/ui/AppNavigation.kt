@@ -15,6 +15,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -23,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,10 +64,14 @@ fun AppNavigation(
     initialDestination: AppDestination = AppDestination.OPERATION,
 ) {
     var current by remember { mutableStateOf(initialDestination) }
+    // rememberSaveable: lipat tidak berubah saat konfigurasi ulang (D-UI-02 butir 5).
+    var railExpanded by rememberSaveable { mutableStateOf(NavigationRailState().expanded) }
 
     Row(modifier = modifier.fillMaxSize()) {
         NavigationRail(
             current = current,
+            expanded = railExpanded,
+            onToggle = { railExpanded = NavigationRailState(railExpanded).toggle().expanded },
             onSelect = { current = it },
         )
         DestinationContent(
@@ -79,32 +85,72 @@ fun AppNavigation(
 @Composable
 private fun NavigationRail(
     current: AppDestination,
+    expanded: Boolean,
+    onToggle: () -> Unit,
     onSelect: (AppDestination) -> Unit,
 ) {
     Column(
         modifier = Modifier
             .fillMaxHeight()
-            .width(NavigationRailWidths.expanded)
+            .width(if (expanded) NavigationRailWidths.expanded else NavigationRailWidths.collapsed)
             .background(Palette.surfaceRaised)
-            .verticalScroll(rememberScrollState())
-            .padding(vertical = 16.dp),
+            .padding(vertical = 8.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Text(
-            text = stringResource(R.string.app_title),
-            color = Palette.onSurface,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-        )
-        AppDestination.entries.forEach { destination ->
-            NavigationRailItem(
-                destination = destination,
-                selected = destination == current,
-                expanded = true,
-                onClick = { onSelect(destination) },
+        RailToggleButton(expanded = expanded, onToggle = onToggle)
+        if (expanded) {
+            Text(
+                text = stringResource(R.string.app_title),
+                color = Palette.onSurface,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
             )
         }
+        // Hanya daftar tujuan yang dapat digulir, sehingga tombol lipat di atas
+        // tidak pernah keluar layar.
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f, fill = false)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            AppDestination.entries.forEach { destination ->
+                NavigationRailItem(
+                    destination = destination,
+                    selected = destination == current,
+                    expanded = expanded,
+                    onClick = { onSelect(destination) },
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Tombol lipat di puncak rail (UI-07). Selalu terlihat pada kedua keadaan dan
+ * tidak ikut tergulir bersama daftar tujuan.
+ */
+@Composable
+private fun RailToggleButton(expanded: Boolean, onToggle: () -> Unit) {
+    IconButton(
+        onClick = onToggle,
+        modifier = Modifier
+            .minimumInteractiveComponentSize()
+            .size(48.dp),
+    ) {
+        Icon(
+            imageVector = if (expanded) NavigationIcons.collapse else NavigationIcons.expand,
+            contentDescription = stringResource(
+                if (expanded) R.string.nav_collapse else R.string.nav_expand,
+            ),
+            tint = Palette.onSurfaceMuted,
+            modifier = Modifier.size(24.dp),
+        )
     }
 }
 
