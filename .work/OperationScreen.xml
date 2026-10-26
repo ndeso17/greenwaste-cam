@@ -21,9 +21,11 @@
       <header id="statusHeader" placement="top">
         <text id="appTitle" value="Pemilah Objek"/>
         <profile id="activeProfile" binding="activeProfile.nameAndVersion" action="open-models" changeGuard="stopped-and-robot-ready"/>
-        <status id="cameraStatus" binding="camera.status"/>
-        <status id="calibrationStatus" binding="calibration.validity"/>
-        <status id="usbStatus" binding="controller.connection"/>
+        <statusGroup id="headerStatusCard" placement="trailing" layout="single-rounded-card; icon-plus-label-above-value; hairline-separated" requirement="UI-01 CAM-01 CAL-06 COM-01">
+          <status id="cameraStatus" binding="camera.status"/>
+          <status id="calibrationStatus" binding="calibration.validity"/>
+          <status id="usbStatus" binding="controller.connection"/>
+        </statusGroup>
       </header>
       <body flow="horizontal" sizing="camera-about-two-thirds-sidebar-about-one-third; adaptable-not-fixed">
         <column id="cameraColumn" placement="left" priority="largest">

@@ -6,12 +6,14 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -89,6 +91,76 @@ fun StatusChip(
             fontWeight = FontWeight.SemiBold,
         )
     }
+}
+
+/**
+ * Kartu ringkas status header: satu permukaan membulat yang mengelompokkan
+ * beberapa [StatusInfoField]. Menggantikan deretan chip sebaris agar label dan
+ * nilai tidak lagi bercampur dalam satu baris teks (`OperationScreen.xml`
+ * `statusHeader`).
+ */
+@Composable
+fun StatusInfoCard(
+    modifier: Modifier = Modifier,
+    content: @Composable RowScope.() -> Unit,
+) {
+    Row(
+        modifier = modifier
+            .background(Palette.surfaceRaised, RoundedCornerShape(10.dp))
+            .border(1.dp, Palette.onSurfaceMuted.copy(alpha = 0.12f), RoundedCornerShape(10.dp))
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        content = content,
+    )
+}
+
+/**
+ * Satu kolom status di dalam [StatusInfoCard]: ikon + label di baris atas, nilai
+ * di baris bawah. Label di atas nilai membuat makna tiap status terbaca tanpa
+ * bergantung pada warna atau posisi (Design.md §7).
+ */
+@Composable
+fun StatusInfoField(
+    label: String,
+    value: String,
+    tone: StatusTone,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.statusDescription("$label: $value"),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            StatusIcon(tone)
+            Text(
+                text = label,
+                color = Palette.onSurfaceMuted,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+            )
+        }
+        Text(
+            text = value,
+            color = if (tone == StatusTone.MUTED) Palette.onSurfaceMuted else tone.color(),
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+    }
+}
+
+/** Pemisah vertikal tipis antar kolom status di dalam [StatusInfoCard]. */
+@Composable
+fun StatusInfoDivider(modifier: Modifier = Modifier) {
+    Spacer(
+        modifier = modifier
+            .width(1.dp)
+            .height(28.dp)
+            .background(Palette.onSurfaceMuted.copy(alpha = 0.16f)),
+    )
 }
 
 /** Kartu panel mesin: judul + isi, sudut membulat dengan pemisah tipis. */

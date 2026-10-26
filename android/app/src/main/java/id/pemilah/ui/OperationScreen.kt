@@ -159,21 +159,25 @@ private fun StatusHeader(state: OperationUiState, onOpenModels: () -> Unit) {
             )
         }
         Spacer(modifier = Modifier.weight(1f))
-        StatusChip(
-            label = stringResource(R.string.header_camera),
-            value = stringResource(state.cameraStatus.labelRes()),
-            tone = state.cameraStatus.tone(),
-        )
-        StatusChip(
-            label = stringResource(R.string.header_calibration),
-            value = stringResource(state.calibration.labelRes()),
-            tone = state.calibration.tone(),
-        )
-        StatusChip(
-            label = stringResource(R.string.header_usb),
-            value = stringResource(state.linkState.labelRes()),
-            tone = state.linkState.tone(),
-        )
+        StatusInfoCard {
+            StatusInfoField(
+                label = stringResource(R.string.header_camera),
+                value = stringResource(state.cameraStatus.labelRes()),
+                tone = state.cameraStatus.tone(),
+            )
+            StatusInfoDivider()
+            StatusInfoField(
+                label = stringResource(R.string.header_calibration),
+                value = stringResource(state.calibration.labelRes()),
+                tone = state.calibration.tone(),
+            )
+            StatusInfoDivider()
+            StatusInfoField(
+                label = stringResource(R.string.header_usb),
+                value = stringResource(state.linkState.labelRes()),
+                tone = state.linkState.tone(),
+            )
+        }
     }
 }
 

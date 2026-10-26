@@ -178,7 +178,7 @@ mockup tidak mengubah enam menu PRD atau mengesahkan data contoh sebagai nilai m
 | ID stabil | Posisi dan ukuran relatif | Isi / perilaku |
 |---|---|---|
 | `navigationRail` | Kiri, sepanjang tinggi konten | Enam tujuan (label D-UI-02); dapat diperkecil 232 dp ⇄ 72 dp; berikon; Operasi aktif |
-| `statusHeader` | Atas, setelah rail | Nama aplikasi, profil aktif, kamera, kalibrasi, USB |
+| `statusHeader` | Atas, setelah rail | Nama aplikasi, profil aktif, lalu satu kartu status ringkas berisi kamera, kalibrasi, dan USB |
 | `cameraStage` | Kolom utama kiri, area terbesar | Frame, area kerja, grid blok, deteksi, target |
 | `targetPanel` | Kanan atas | ID target, kelas, blok/posisi, bak dan robot tujuan |
 | `robotPanel` | Kanan tengah | Status kiri dan kanan secara terpisah |
@@ -235,6 +235,13 @@ diperkecil (UI-07). Aturan keadaan rail:
 
 Header profil adalah identitas dan pintasan ke Models; bentuk mirip
 pemilih pada render tidak mengizinkan pergantian profil saat operasi berjalan.
+
+Status kamera, kalibrasi, dan USB pada header dikelompokkan dalam **satu kartu
+ringkas** di sisi kanan: setiap status memakai ikon, label kecil di atas, dan
+nilai tebal di bawah, dipisahkan garis tipis. Pengelompokan ini menjaga label
+dan nilai tidak bercampur menjadi satu baris teks serta tetap terbaca tanpa
+mengandalkan warna (Design.md §7). Kartu tidak boleh menutupi pratinjau dan
+harus tetap utuh saat teks diperbesar.
 
 Gunakan permukaan gelap dan kartu bersudut membulat, pemisah tipis, ikon
 sederhana, teks terang, biru untuk pilihan/aksi, merah untuk Hentikan/gangguan,
