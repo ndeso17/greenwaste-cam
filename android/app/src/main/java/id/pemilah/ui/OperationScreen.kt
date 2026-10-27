@@ -38,6 +38,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -56,12 +57,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import androidx.core.content.ContextCompat
 import id.pemilah.Palette
 import id.pemilah.R
 import id.pemilah.camera.CameraPreview
 import id.pemilah.camera.CameraStatus
 import id.pemilah.inference.ArgbFrame
+import id.pemilah.inference.TileDetection
 import id.pemilah.usb.LinkState
 
 /**
@@ -81,6 +84,8 @@ fun OperationScreen(
     modifier: Modifier = Modifier,
     state: OperationUiState? = null,
     classification: ClassificationUi = ClassificationUi.Waiting,
+    detections: List<TileDetection> = emptyList(),
+    detectionsAtMillis: Long = 0L,
     onStart: () -> Unit = {},
     onStop: () -> Unit = {},
     onFrame: ((ArgbFrame) -> Unit)? = null,
@@ -97,6 +102,34 @@ fun OperationScreen(
     // Frame hanya diminta saat pemantauan berjalan; di luar itu tidak ada
     // inferensi diam-diam (D-13).
     val frameCallback: ((ArgbFrame) -> Unit)? = if (ui.isRunning) onFrame else null
+    // Penanda usang butuh jam berjalan; hanya berdetak selama pemantauan aktif
+    // supaya tidak ada pembaruan state yang tidak perlu (D-14).
+    var nowMillis by remember { mutableStateOf(0L) }
+    LaunchedEffect(ui.isRunning) {
+        while (ui.isRunning) {
+            nowMillis = System.currentTimeMillis()
+            delay(500)
+        }
+    }
+    val detectionsStale = ui.isRunning && detections.isNotEmpty() &&
+        nowMillis - detectionsAtMillis > OperationSession.DETECTION_STALE_MS
+    val detectionUi = if (ui.isRunning) {
+        detections.map { detection ->
+            DetectionUi(
+                box = NormalizedBox(
+                    left = detection.region.left,
+                    top = detection.region.top,
+                    right = detection.region.right,
+                    bottom = detection.region.bottom,
+                ),
+                classLabel = detection.label,
+                confidence = detection.probability,
+                stale = detectionsStale,
+            )
+        }
+    } else {
+        emptyList()
+    }
     BoxWithConstraints(modifier = modifier.fillMaxSize().safeDrawingPadding()) {
         val sidebarWidth = if (maxWidth < 600.dp) {
             (maxWidth - 24.dp).coerceAtMost(300.dp)
@@ -114,6 +147,7 @@ fun OperationScreen(
             },
             guidesVisible = guidesVisible,
             onFrame = frameCallback,
+            detections = detectionUi,
             modifier = Modifier.fillMaxSize(),
         )
         if (panelVisible) {
@@ -224,6 +258,7 @@ private fun CameraStage(
     onCameraStatusChange: (CameraStatus) -> Unit,
     guidesVisible: Boolean,
     onFrame: ((ArgbFrame) -> Unit)?,
+    detections: List<DetectionUi>,
     modifier: Modifier = Modifier,
 ) {
     var backdrop by remember { mutableStateOf<ImageBitmap?>(null) }
@@ -259,9 +294,14 @@ private fun CameraStage(
         DetectionOverlay(
             workArea = null,
             blocks = emptyList(),
-            detections = emptyList(),
+            detections = detections,
             target = null,
             targetLabel = stringResource(R.string.target_label),
+            // Ringkasan aksesibilitas: kotak di kanvas tidak terbaca TalkBack,
+            // jadi isi kotak dinyatakan sebagai teks (Design.md §7).
+            modifier = Modifier.statusDescription(
+                detectionsSummary(detections, stale = detections.any { it.stale }),
+            ),
         )
         CameraStatusOverlay(
             status = cameraStatus,
@@ -319,6 +359,23 @@ private fun GuidesToggle(visible: Boolean, onVisibleChange: (Boolean) -> Unit) {
             }
             Switch(checked = visible, onCheckedChange = onVisibleChange)
         }
+    }
+}
+
+/**
+ * Ringkasan kotak overlay untuk pembaca layar dan untuk pemeriksaan otomatis.
+ * Tidak ada kotak berarti dinyatakan kosong, bukan disembunyikan.
+ */
+private fun detectionsSummary(detections: List<DetectionUi>, stale: Boolean): String {
+    if (detections.isEmpty()) return "Tidak ada kotak objek"
+    val parts = detections.joinToString(", ") { detection ->
+        "${detection.classLabel} ${(detection.confidence * 100).toInt()}%"
+    }
+    return buildString {
+        append(detections.size)
+        append(" kotak objek: ")
+        append(parts)
+        if (stale) append(" (usang)")
     }
 }
 

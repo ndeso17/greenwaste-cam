@@ -107,10 +107,18 @@ fun AppNavigation(
     var classificationUi by remember(operationSession) {
         mutableStateOf(operationSession.classification)
     }
+    var detections by remember(operationSession) {
+        mutableStateOf(operationSession.detections)
+    }
+    var detectionsAtMillis by remember(operationSession) {
+        mutableStateOf(operationSession.detectionsAtMillis)
+    }
     DisposableEffect(operationSession) {
         operationSession.onChange = {
             operationRunning = operationSession.isRunning
             classificationUi = operationSession.classification
+            detections = operationSession.detections
+            detectionsAtMillis = operationSession.detectionsAtMillis
         }
         onDispose { operationSession.onChange = {} }
     }
@@ -192,6 +200,8 @@ fun AppNavigation(
                 deleteResult = deleteResult,
                 operationRunning = operationRunning,
                 classification = classificationUi,
+                detections = detections,
+                detectionsAtMillis = detectionsAtMillis,
                 onStartOperation = { operationSession.start() },
                 onStopOperation = { operationSession.stop() },
                 onFrame = { frame -> operationSession.onFrame(frame) },
@@ -361,6 +371,8 @@ private fun DestinationContent(
     deleteResult: ModelsDeleteUi?,
     operationRunning: Boolean,
     classification: ClassificationUi,
+    detections: List<id.pemilah.inference.TileDetection>,
+    detectionsAtMillis: Long,
     onStartOperation: () -> Unit,
     onStopOperation: () -> Unit,
     onFrame: (id.pemilah.inference.ArgbFrame) -> Unit,
@@ -377,6 +389,8 @@ private fun DestinationContent(
                 isRunning = operationRunning,
             ),
             classification = classification,
+            detections = detections,
+            detectionsAtMillis = detectionsAtMillis,
             onStart = onStartOperation,
             onStop = onStopOperation,
             onFrame = onFrame,

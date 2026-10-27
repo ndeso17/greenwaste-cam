@@ -45,7 +45,8 @@ class OperationSessionTest {
         binAssignment = emptyMap(),
     )
 
-    private val frame = ArgbFrame(IntArray(4) { 0xFF808080.toInt() }, width = 2, height = 2)
+    // Frame 30x30 menghasilkan sembilan petak 10x10 pada pembagian 3x3.
+    private val frame = ArgbFrame(IntArray(30 * 30) { 0xFF808080.toInt() }, width = 30, height = 30)
 
     private class FakeClassifier(
         private val outcome: ClassifierOutcome,
@@ -56,6 +57,21 @@ class OperationSessionTest {
             calls++
             onClassify()
             return outcome
+        }
+    }
+
+    /** Petak ke-`index` memakai hasil berbeda; dipakai menguji kotak per petak. */
+    private class PerTileClassifier(private val outcomes: List<ClassifierOutcome>) : Classifier {
+        override fun classify(profile: ModelProfile, frame: ArgbFrame): ClassifierOutcome =
+            outcomes.first()
+
+        override fun classifyAll(
+            profile: ModelProfile,
+            frames: List<ArgbFrame>,
+        ): List<ClassifierOutcome> = frames.indices.map { index ->
+            outcomes.getOrElse(index) {
+                ClassifierOutcome.Failed(ClassifierFailure(ClassifierFailureCode.RUN_FAILED))
+            }
         }
     }
 
@@ -172,7 +188,7 @@ class OperationSessionTest {
 
         assertFalse(session.isRunning)
         assertEquals(ClassificationUi.Waiting, session.classification)
-        assertEquals("frame sesudah berhenti tidak diklasifikasi", 1, classifier.calls)
+        assertEquals("frame sesudah berhenti tidak diklasifikasi", 9, classifier.calls)
     }
 
     @Test
@@ -189,6 +205,74 @@ class OperationSessionTest {
         session.onActiveProfileChanged()
 
         assertFalse(session.isRunning)
+    }
+
+    @Test
+    fun onFrame_createsBoxOnlyForTilesAboveThreshold() {
+        // Petak 0 Kaca 0.9 (lolos), petak 1 Organik 0.1 (di bawah ambang 0.6),
+        // sisanya di bawah ambang lewat nilai bawaan.
+        val session = session(
+            PerTileClassifier(
+                listOf(
+                    classified("Kaca" to 0.9f),
+                    classified("Organik" to 0.1f),
+                ),
+            ),
+        )
+        session.updateCameraStatus(CameraStatus.Ready)
+        session.start()
+
+        session.onFrame(frame)
+
+        val detection = session.detections.single()
+        assertEquals("Kaca", detection.label)
+        // Petak pertama: kiri-atas sepertiga frame.
+        assertEquals(0f, detection.region.left, 0.0001f)
+        assertEquals(0f, detection.region.top, 0.0001f)
+        assertEquals(1f / 3f, detection.region.right, 0.0001f)
+        assertEquals(1f / 3f, detection.region.bottom, 0.0001f)
+        assertTrue(session.detectionsAtMillis > 0L)
+    }
+
+    @Test
+    fun onFrame_withoutThreshold_hasNoBoxes() {
+        // Ambang 0.0 = belum ditetapkan (D-09): tidak ada kotak yang dikarang.
+        val noThreshold = profile.copy(confidenceThreshold = 0.0)
+        val session = OperationSession(
+            classifier = PerTileClassifier(listOf(classified("Kaca" to 0.99f))),
+            activeProfile = { ActiveProfileState.Selected(noThreshold) },
+        )
+        session.updateCameraStatus(CameraStatus.Ready)
+        session.start()
+
+        session.onFrame(frame)
+
+        assertTrue(session.detections.isEmpty())
+    }
+
+    @Test
+    fun onFrame_resultReportsTilesChecked() {
+        val session = session(PerTileClassifier(listOf(classified("Kaca" to 0.9f))))
+        session.updateCameraStatus(CameraStatus.Ready)
+        session.start()
+
+        session.onFrame(frame)
+
+        val result = session.classification as ClassificationUi.Result
+        assertEquals(9, result.tilesChecked)
+    }
+
+    @Test
+    fun stop_clearsBoxes() {
+        val session = session(PerTileClassifier(listOf(classified("Kaca" to 0.9f))))
+        session.updateCameraStatus(CameraStatus.Ready)
+        session.start()
+        session.onFrame(frame)
+        assertTrue(session.detections.isNotEmpty())
+
+        session.stop()
+
+        assertTrue(session.detections.isEmpty())
     }
 
     @Test

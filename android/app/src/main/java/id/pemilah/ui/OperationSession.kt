@@ -6,6 +6,9 @@ import id.pemilah.inference.Classifier
 import id.pemilah.inference.ClassifierFailure
 import id.pemilah.inference.ClassifierFailureCode
 import id.pemilah.inference.ClassifierOutcome
+import id.pemilah.inference.FrameTiles
+import id.pemilah.inference.TileDetection
+import id.pemilah.inference.TileDetectionFilter
 import id.pemilah.model.ActiveProfileState
 import id.pemilah.model.ModelProfile
 
@@ -25,6 +28,8 @@ sealed interface ClassificationUi {
         val probability: Float,
         val threshold: Double,
         val runnerUp: List<Pair<String, Float>>,
+        /** Jumlah petak yang diklasifikasi pada frame ini. */
+        val tilesChecked: Int,
     ) : ClassificationUi {
         /** Probabilitas di bawah ambang keyakinan profil (MOD-04, D-13). */
         val belowThreshold: Boolean get() = probability < threshold
@@ -55,6 +60,17 @@ class OperationSession(
         private set
 
     var classification: ClassificationUi = ClassificationUi.Waiting
+        private set
+
+    /**
+     * Kotak overlay hasil klasifikasi petak (D-14): batas petak yang lolos ambang,
+     * bukan tepi objek. Kosong berarti tidak ada petak yang meyakinkan.
+     */
+    var detections: List<TileDetection> = emptyList()
+        private set
+
+    /** Waktu (epoch ms) frame terakhir yang menghasilkan [detections]. */
+    var detectionsAtMillis: Long = 0L
         private set
 
     /**
@@ -100,6 +116,7 @@ class OperationSession(
         if (!StartGuardProjection.canStart(state)) return false
         isRunning = true
         classification = ClassificationUi.Waiting
+        detections = emptyList()
         onChange()
         return true
     }
@@ -111,21 +128,38 @@ class OperationSession(
         if (!isRunning) return
         isRunning = false
         classification = ClassificationUi.Waiting
+        detections = emptyList()
         onChange()
     }
 
     /**
-     * Klasifikasi satu frame kamera. Dipanggil analyzer; hasil diabaikan bila
-     * pemantauan sudah berhenti di tengah inferensi.
+     * Klasifikasi satu frame kamera: frame dibagi menjadi petak, seluruh petak
+     * diklasifikasi dalam satu batch, dan petak yang lolos ambang menjadi kotak
+     * overlay (D-14). Dipanggil analyzer; hasil diabaikan bila pemantauan sudah
+     * berhenti di tengah inferensi.
      */
     fun onFrame(frame: ArgbFrame) {
         if (!isRunning) return
         val profile = runningProfile() ?: return
-        val outcome = classifier.classify(profile, frame)
+        val tiles = FrameTiles.split(frame, columns = TILE_COLUMNS, rows = TILE_ROWS)
+        if (tiles.isEmpty()) return
+        val outcomes = classifier.classifyAll(profile, tiles.map { it.frame })
         if (!isRunning) return
-        classification = when (outcome) {
-            is ClassifierOutcome.Classified -> {
-                val label = outcome.result.topLabel
+        detections = TileDetectionFilter.select(tiles, outcomes, profile.confidenceThreshold)
+        detectionsAtMillis = System.currentTimeMillis()
+        classification = when (val top = outcomes.filterIsInstance<ClassifierOutcome.Classified>()
+            .maxByOrNull { it.result.topProbability }) {
+            null -> {
+                val failure = outcomes.filterIsInstance<ClassifierOutcome.Failed>().firstOrNull()?.failure
+                    ?: ClassifierFailure(
+                        ClassifierFailureCode.OUTPUT_SHAPE_MISMATCH,
+                        "model tidak mengeluarkan kelas",
+                    )
+                ClassificationUi.Failed(profile.name, failure)
+            }
+
+            else -> {
+                val label = top.result.topLabel
                 if (label == null) {
                     ClassificationUi.Failed(
                         profileName = profile.name,
@@ -138,14 +172,13 @@ class OperationSession(
                     ClassificationUi.Result(
                         profileName = profile.name,
                         label = label,
-                        probability = outcome.result.topProbability,
+                        probability = top.result.topProbability,
                         threshold = profile.confidenceThreshold,
-                        runnerUp = outcome.result.ranked(4).drop(1),
+                        runnerUp = top.result.ranked(4).drop(1),
+                        tilesChecked = tiles.size,
                     )
                 }
             }
-
-            is ClassifierOutcome.Failed -> ClassificationUi.Failed(profile.name, outcome.failure)
         }
         onChange()
     }
@@ -156,6 +189,13 @@ class OperationSession(
     }
 
     companion object {
+        /** Petak 3x3: cukup kasar untuk posisi objek, cukup murah untuk CPU. */
+        const val TILE_COLUMNS: Int = 3
+        const val TILE_ROWS: Int = 3
+
+        /** Kotak lebih tua dari ini ditandai usang oleh overlay (D-14). */
+        const val DETECTION_STALE_MS: Long = 2_500L
+
         /** Pesan Mesin yang dipakai guard saat Mulai ditekan. */
         fun machineState(): MachineState = MachineState.Stopped
 

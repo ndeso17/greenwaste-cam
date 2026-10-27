@@ -40,41 +40,149 @@ class OrtClassifier(private val store: ConfigStore) : Classifier {
     private var sessionModelFile: String? = null
 
     override fun classify(profile: ModelProfile, frame: ArgbFrame): ClassifierOutcome {
-        val modelFile = profile.modelFile
-        val bytes = store.readModelFile(modelFile)
-            ?: return failed(ClassifierFailureCode.MODEL_FILE_MISSING, modelFile)
+        val prepared = prepare(profile)
+        if (prepared == null) {
+            return ClassifierOutcome.Failed(
+                lastFailure ?: ClassifierFailure(
+                    ClassifierFailureCode.MODEL_FILE_MISSING,
+                    profile.modelFile,
+                ),
+            )
+        }
+        return infer(prepared, listOf(frame)).firstOrNull()
+            ?: failed(ClassifierFailureCode.RUN_FAILED, "tidak ada keluaran")
+    }
+
+    /**
+     * Klasifikasi batch: seluruh petak dibungkus satu tensor `[N, 3, H, W]`.
+     *
+     * Bila model tidak menerima batch (mis. batch tetap 1), eksekusi batch gagal
+     * dan setiap petak dijalankan satu per satu. Hasil akhirnya sama; yang
+     * berbeda hanya jumlah eksekusi sesi.
+     */
+    override fun classifyAll(
+        profile: ModelProfile,
+        frames: List<ArgbFrame>,
+    ): List<ClassifierOutcome> {
+        if (frames.isEmpty()) return emptyList()
+        val prepared = prepare(profile) ?: return frames.map {
+            lastFailure ?: ClassifierFailure(ClassifierFailureCode.MODEL_FILE_MISSING)
+        }.map { ClassifierOutcome.Failed(it) }
+        if (frames.size == 1) return infer(prepared, frames)
+        val batched = infer(prepared, frames)
+        if (batched.size == frames.size && batched.none { it is ClassifierOutcome.Failed }) {
+            return batched
+        }
+        return frames.map { frame -> classify(profile, frame) }
+    }
+
+    private class Prepared(val session: OrtSession, val profile: ModelProfile)
+
+    /** Kegagalan terakhir pada `prepare`; dipakai `classifyAll` untuk batch kosong. */
+    private var lastFailure: ClassifierFailure? = null
+
+    private fun prepare(profile: ModelProfile): Prepared? {
+        lastFailure = null
+        val bytes = store.readModelFile(profile.modelFile)
+        if (bytes == null) {
+            lastFailure = ClassifierFailure(ClassifierFailureCode.MODEL_FILE_MISSING, profile.modelFile)
+            return null
+        }
         val open = try {
-            openSession(modelFile, bytes)
+            openSession(profile.modelFile, bytes)
         } catch (error: OrtException) {
-            return failed(ClassifierFailureCode.MODEL_UNREADABLE, detailOf(error))
+            lastFailure = ClassifierFailure(
+                ClassifierFailureCode.MODEL_UNREADABLE,
+                detailOf(error),
+            )
+            return null
         }
+        return Prepared(open, profile)
+    }
+
+    /**
+     * Satu eksekusi sesi untuk seluruh [frames].
+     *
+     * Bentuk keluaran model harus `[N, C]`; `[1, C]` untuk `N` petak tidak dapat
+     * dipetakan per petak sehingga dilaporkan gagal agar pemanggil dapat mundur
+     * ke jalur satu-per-satu.
+     */
+    private fun infer(prepared: Prepared, frames: List<ArgbFrame>): List<ClassifierOutcome> {
+        val profile = prepared.profile
         val tensor = try {
-            FramePreprocess.toTensor(frame, profile.input)
+            concatTensor(frames, profile)
         } catch (error: IllegalArgumentException) {
-            return failed(ClassifierFailureCode.OUTPUT_SHAPE_MISMATCH, error.message)
+            return frames.map {
+                ClassifierOutcome.Failed(
+                    ClassifierFailure(ClassifierFailureCode.OUTPUT_SHAPE_MISMATCH, error.message),
+                )
+            }
         }
-        val shape = longArrayOf(1, 3, profile.input.height.toLong(), profile.input.width.toLong())
+        val shape = longArrayOf(
+            frames.size.toLong(),
+            3,
+            profile.input.height.toLong(),
+            profile.input.width.toLong(),
+        )
         return try {
             OnnxTensor.createTensor(environment, FloatBuffer.wrap(tensor), shape).use { input ->
-                val inputName = open.inputNames.firstOrNull()
-                    ?: return failed(ClassifierFailureCode.MODEL_UNREADABLE, "tidak ada masukan")
-                open.run(mapOf(inputName to input)).use { result ->
-                    val logits = readLogits(result.get(0)) ?: return failed(
-                        ClassifierFailureCode.OUTPUT_SHAPE_MISMATCH,
-                        "keluaran bukan tensor [1, ${profile.labels.size}]",
-                    )
-                    if (logits.size != profile.labels.size) {
-                        return failed(
-                            ClassifierFailureCode.OUTPUT_SHAPE_MISMATCH,
-                            "keluaran ${logits.size} nilai, label ${profile.labels.size}",
+                val inputName = prepared.session.inputNames.firstOrNull()
+                    ?: return frames.map {
+                        ClassifierOutcome.Failed(
+                            ClassifierFailure(
+                                ClassifierFailureCode.MODEL_UNREADABLE,
+                                "tidak ada masukan",
+                            ),
                         )
                     }
-                    ClassifierOutcome.Classified(Classification.fromLogits(profile.labels, logits))
+                prepared.session.run(mapOf(inputName to input)).use { result ->
+                    val rows = readLogits(result.get(0))
+                    if (rows == null || rows.size != frames.size) {
+                        return frames.map {
+                            ClassifierOutcome.Failed(
+                                ClassifierFailure(
+                                    ClassifierFailureCode.OUTPUT_SHAPE_MISMATCH,
+                                    "keluaran bukan [${
+                                        frames.size
+                                    }, ${profile.labels.size}]",
+                                ),
+                            )
+                        }
+                    }
+                    rows.map { logits ->
+                        if (logits.size != profile.labels.size) {
+                            ClassifierOutcome.Failed(
+                                ClassifierFailure(
+                                    ClassifierFailureCode.OUTPUT_SHAPE_MISMATCH,
+                                    "keluaran ${logits.size} nilai, label ${profile.labels.size}",
+                                ),
+                            )
+                        } else {
+                            ClassifierOutcome.Classified(
+                                Classification.fromLogits(profile.labels, logits),
+                            )
+                        }
+                    }
                 }
             }
         } catch (error: OrtException) {
-            failed(ClassifierFailureCode.RUN_FAILED, detailOf(error))
+            frames.map {
+                ClassifierOutcome.Failed(ClassifierFailure(ClassifierFailureCode.RUN_FAILED, detailOf(error)))
+            }
         }
+    }
+
+    private fun concatTensor(frames: List<ArgbFrame>, profile: ModelProfile): FloatArray {
+        val perFrame = 3 * profile.input.width * profile.input.height
+        val tensor = FloatArray(perFrame * frames.size)
+        frames.forEachIndexed { index, frame ->
+            val single = FramePreprocess.toTensor(frame, profile.input)
+            require(single.size == perFrame) {
+                "tensor petak ${single.size} tidak sama dengan $perFrame"
+            }
+            System.arraycopy(single, 0, tensor, index * perFrame, perFrame)
+        }
+        return tensor
     }
 
     /** Tutup sesi aktif; dipanggil saat pemantauan berhenti atau model berganti. */
@@ -93,16 +201,14 @@ class OrtClassifier(private val store: ConfigStore) : Classifier {
         }
     }
 
-    private fun readLogits(value: Any?): FloatArray? {
+    private fun readLogits(value: Any?): List<FloatArray>? {
         val tensor = value as? OnnxTensor ?: return null
         val info = tensor.info as? TensorInfo ?: return null
         val shape = info.shape
-        // Keluaran klasifikasi: [1, C] (batch satu). Bentuk lain ditolak.
-        if (shape.size != 2 || shape[0] != 1L) return null
-        return when (val raw = tensor.value) {
-            is Array<*> -> (raw.firstOrNull() as? FloatArray)
-            else -> null
-        }
+        // Keluaran klasifikasi: [N, C]. Bentuk lain ditolak.
+        if (shape.size != 2) return null
+        val rows = (tensor.value as? Array<*>)?.mapNotNull { it as? FloatArray } ?: return null
+        return rows.takeIf { it.size.toLong() == shape[0] }
     }
 
     private fun failed(code: ClassifierFailureCode, detail: String?): ClassifierOutcome =

@@ -94,6 +94,10 @@ private fun ClassificationResult(result: ClassificationUi.Result) {
                 value = "$label ${ModelsNumbers.floatToPercentText(probability)}",
             )
         }
+        PanelField(
+            label = stringResource(R.string.classification_tiles),
+            value = result.tilesChecked.toString(),
+        )
     }
 }
 
