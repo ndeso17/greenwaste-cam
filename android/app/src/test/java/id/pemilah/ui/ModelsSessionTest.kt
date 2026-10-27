@@ -3,15 +3,23 @@ package id.pemilah.ui
 import id.pemilah.domain.operation.MachineState
 import id.pemilah.domain.waste.WasteClass
 import id.pemilah.model.ActiveProfileAbsentReason
+import id.pemilah.model.ActiveProfileState
 import id.pemilah.model.InputSpec
+import id.pemilah.model.ModelFileReader
+import id.pemilah.model.ModelImport
 import id.pemilah.model.ModelProfile
 import id.pemilah.model.Normalization
+import id.pemilah.model.OnnxInspectionCode
+import id.pemilah.model.OnnxInspectionProblem
+import id.pemilah.model.OnnxInspectionResult
+import id.pemilah.model.OnnxMetadata
+import id.pemilah.model.OnnxModelInfo
+import id.pemilah.model.OnnxModelInspector
 import id.pemilah.model.OutputFormat
 import id.pemilah.model.OutputSpec
-import id.pemilah.model.ProfileFileReader
-import id.pemilah.model.ProfileImport
 import id.pemilah.model.ProfileRepository
 import id.pemilah.model.ProfileSwitchBlockCode
+import id.pemilah.model.StoredProfile
 import id.pemilah.model.TensorLayout
 import id.pemilah.storage.ConfigStore
 import id.pemilah.storage.MemoryConfigStorage
@@ -21,227 +29,333 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Sesi layar Models (WP-10): pemilihan profil aktif, penolakan saat berjalan,
- * profil aktif bertahan setelah sesi dibangun ulang, dan label untuk layar
- * Operasi (MOD-03, NFR-03, UI-01).
+ * Sesi layar Models (WP-09, D-09): impor model ONNX, pemilihan model aktif,
+ * penolakan saat berjalan atau saat ambang belum ditetapkan, model aktif
+ * bertahan setelah sesi dibangun ulang, dan label untuk layar Operasi (MOD-01,
+ * MOD-03, MOD-04, NFR-03, UI-01).
  */
 class ModelsSessionTest {
 
-    private fun profile(profileId: String, name: String = "profil-$profileId") = ModelProfile(
-        schemaVersion = 1,
-        profileId = profileId,
-        name = name,
-        version = "2.0.0",
-        modelFile = "profile-assets/$profileId.onnx",
-        labels = listOf("Organik"),
-        classMapping = mapOf("Organik" to WasteClass.ORGANIK),
-        input = InputSpec(640, 640, Normalization.SCALE_0_1, TensorLayout.NCHW),
-        output = OutputSpec(OutputFormat.YOLO_V8, boxesNormalized = true, hasObjectness = false),
-        confidenceThreshold = 0.45,
-        groupingEnabled = false,
-        binAssignment = mapOf(WasteClass.ORGANIK to "B1"),
+    private val sevenClasses = listOf(
+        "Organik",
+        "Plastik",
+        "Kaleng",
+        "Styrofoam",
+        "Kaca",
+        "Kardus",
+        "Besi",
     )
 
-    private fun session(storage: MemoryConfigStorage): ModelsSession {
+    private val onnxBytes = byteArrayOf(0x08, 0x07)
+
+    private class FakeReader(private val name: String?, private val bytes: ByteArray?) :
+        ModelFileReader {
+        override fun displayName(uri: String): String? = name
+
+        override fun readBytes(uri: String): ByteArray? = bytes
+    }
+
+    private class FakeInspector(private val result: OnnxInspectionResult) : OnnxModelInspector {
+        override fun inspect(bytes: ByteArray): OnnxInspectionResult = result
+    }
+
+    private fun accepts(labels: List<String>) = OnnxInspectionResult.Inspected(
+        OnnxModelInfo(
+            labels = labels,
+            input = requireNotNull(OnnxMetadata.inputSpecOf(listOf(1L, 3L, 640L, 640L))),
+            output = requireNotNull(
+                OnnxMetadata.outputSpecOf(listOf(1L, (4 + labels.size).toLong(), 8400L), labels.size),
+            ),
+            modelVersion = "8.3.0",
+        ),
+    )
+
+    private fun session(
+        storage: MemoryConfigStorage,
+        inspector: FakeInspector = FakeInspector(accepts(sevenClasses)),
+    ): ModelsSession {
         val repository = ProfileRepository(ConfigStore(storage))
-        return ModelsSession(repository, ProfileImport(repository))
+        return ModelsSession(repository, ModelImport(repository, inspector))
     }
 
     private fun messages(outcome: ModelsSessionOutcome) = outcome.messages
 
+    /** Impor model tujuh kelas; hasilnya profil yang siap diuji lebih lanjut. */
+    private fun ModelsSession.importSevenClasses(name: String = "sampah.onnx"): String {
+        val outcome = importModel("content://$name", FakeReader(name, onnxBytes))
+        assertTrue("impor harus berhasil: ${outcome.messages}", messages(outcome).any {
+            it is ModelsSessionMessage.Imported
+        })
+        return outcome.state.rows.single().profileId
+    }
+
+    /** Tetapkan ambang supaya model boleh diaktifkan (MOD-04). */
+    private fun ModelsSession.setThreshold(profileId: String) {
+        val outcome = commitThreshold(profileId, "0.5")
+        assertTrue(
+            "ambang harus tersimpan: ${outcome.messages}",
+            messages(outcome).any { it is ModelsSessionMessage.ThresholdSaved },
+        )
+    }
+
     @Test
-    fun activateValidProfile_changesActiveState() {
+    fun importModel_storesProfileWithClassesFromModel() {
         val storage = MemoryConfigStorage()
         val session = session(storage)
-        session.importProfile("content://a.json", FakeReader(validJson("profil-1")))
 
-        val outcome = session.setActiveProfile(
-            profileId = "profil-1",
-            machineState = MachineState.Stopped,
-            hasActiveTarget = false,
+        val outcome = session.importModel("content://sampah.onnx", FakeReader("sampah.onnx", onnxBytes))
+
+        assertEquals(
+            listOf(ModelsSessionMessage.Imported("sampah")),
+            messages(outcome),
+        )
+        val row = outcome.state.rows.single()
+        assertEquals(7, row.classCount)
+        assertEquals(sevenClasses, row.labels.map { it.label })
+        assertEquals(7, row.labels.mapNotNull { it.wasteClass }.size)
+        // Ambang belum ditetapkan pada model yang baru diimpor.
+        assertEquals("0", row.thresholdText)
+        assertTrue(row.thresholdSet.not())
+        assertEquals(1, storage.binaryFiles.size)
+    }
+
+    @Test
+    fun importModel_jsonFile_isRejectedAndListUnchanged() {
+        val session = session(MemoryConfigStorage())
+        session.importSevenClasses("lama.onnx")
+
+        val outcome = session.importModel(
+            "content://profil.json",
+            FakeReader("profil.json", """{"schemaVersion": 1}""".toByteArray()),
         )
 
-        assertTrue(messages(outcome).any { it is ModelsSessionMessage.Activated })
-        assertEquals("profil-1", outcome.state.activeProfileId)
+        val rejected = messages(outcome).single() as ModelsSessionMessage.ImportRejected
+        assertEquals(
+            listOf(id.pemilah.model.ModelImportProblemCode.NOT_ONNX_MODEL),
+            rejected.problems.map { it.code },
+        )
+        assertEquals("model lama tetap ada", 1, outcome.state.rows.size)
+    }
+
+    @Test
+    fun importModel_unreadableModel_isRejected() {
+        val session = session(
+            MemoryConfigStorage(),
+            FakeInspector(
+                OnnxInspectionResult.Rejected(
+                    OnnxInspectionProblem(OnnxInspectionCode.MISSING_CLASS_NAMES),
+                ),
+            ),
+        )
+
+        val outcome = session.importModel("content://x.onnx", FakeReader("x.onnx", onnxBytes))
+
+        val rejected = messages(outcome).single() as ModelsSessionMessage.ImportRejected
+        assertEquals(
+            listOf(id.pemilah.model.ModelImportProblemCode.MISSING_CLASS_NAMES),
+            rejected.problems.map { it.code },
+        )
+        assertTrue(outcome.state.isEmpty)
+    }
+
+    @Test
+    fun activateWithoutThreshold_isRejectedWithThresholdUnset() {
+        val session = session(MemoryConfigStorage())
+        val profileId = session.importSevenClasses()
+
+        val outcome = session.setActiveProfile(profileId, MachineState.Stopped, hasActiveTarget = false)
+
+        val rejected = messages(outcome).single() as ModelsSessionMessage.SwitchRejected
+        assertEquals(
+            listOf(ProfileSwitchBlockCode.CONFIDENCE_THRESHOLD_UNSET),
+            rejected.blocks.map { it.code },
+        )
+        assertEquals(ActiveProfileState.None(ActiveProfileAbsentReason.NOT_SELECTED), session.activeProfile())
+    }
+
+    @Test
+    fun activateValidProfileWithThreshold_changesActiveState() {
+        val storage = MemoryConfigStorage()
+        val session = session(storage)
+        val profileId = session.importSevenClasses()
+        session.setThreshold(profileId)
+
+        val outcome = session.setActiveProfile(profileId, MachineState.Stopped, hasActiveTarget = false)
+
+        assertEquals(listOf(ModelsSessionMessage.Activated(profileId)), messages(outcome))
         assertTrue(outcome.state.rows.single().isActive)
+        assertTrue(session.activeProfile() is ActiveProfileState.Selected)
     }
 
     @Test
-    fun activateWhileRunning_isRejectedAndPreviousProfileStaysActive() {
-        val storage = MemoryConfigStorage()
-        val session = session(storage)
-        session.importProfile("content://a.json", FakeReader(validJson("profil-1")))
-        session.importProfile("content://b.json", FakeReader(validJson("profil-2")))
-        session.setActiveProfile("profil-1", MachineState.Stopped, hasActiveTarget = false)
+    fun activateWhileRunning_isRejectedWithMachineRunning() {
+        val session = session(MemoryConfigStorage())
+        val profileId = session.importSevenClasses()
+        session.setThreshold(profileId)
 
-        val outcome = session.setActiveProfile("profil-2", MachineState.Running, hasActiveTarget = false)
+        val outcome = session.setActiveProfile(profileId, MachineState.Running, hasActiveTarget = false)
 
-        val blocked = messages(outcome).filterIsInstance<ModelsSessionMessage.SwitchRejected>()
-        assertEquals(
-            listOf(ProfileSwitchBlockCode.MACHINE_RUNNING),
-            blocked.single().blocks.map { it.code },
-        )
-        assertEquals("profil-1", outcome.state.activeProfileId)
-        assertEquals(
-            listOf(true, false),
-            outcome.state.rows.sortedBy { it.profileId }.map { it.isActive },
-        )
-    }
-
-    @Test
-    fun activateWithActiveTarget_isRejected() {
-        val storage = MemoryConfigStorage()
-        val session = session(storage)
-        session.importProfile("content://a.json", FakeReader(validJson("profil-1")))
-
-        val outcome = session.setActiveProfile("profil-1", MachineState.Stopped, hasActiveTarget = true)
-
-        val blocked = messages(outcome).filterIsInstance<ModelsSessionMessage.SwitchRejected>()
-        assertEquals(
-            listOf(ProfileSwitchBlockCode.ACTIVE_TARGET_PRESENT),
-            blocked.single().blocks.map { it.code },
-        )
+        val rejected = messages(outcome).single() as ModelsSessionMessage.SwitchRejected
+        assertEquals(listOf(ProfileSwitchBlockCode.MACHINE_RUNNING), rejected.blocks.map { it.code })
         assertNull(outcome.state.activeProfileId)
     }
 
     @Test
-    fun activateUnknownProfile_reportsNotFound() {
+    fun activateWithActiveTarget_isRejectedWithActiveTargetPresent() {
+        val session = session(MemoryConfigStorage())
+        val profileId = session.importSevenClasses()
+        session.setThreshold(profileId)
+
+        val outcome = session.setActiveProfile(profileId, MachineState.Stopped, hasActiveTarget = true)
+
+        val rejected = messages(outcome).single() as ModelsSessionMessage.SwitchRejected
+        assertEquals(
+            listOf(ProfileSwitchBlockCode.ACTIVE_TARGET_PRESENT),
+            rejected.blocks.map { it.code },
+        )
+    }
+
+    @Test
+    fun activateUnknownProfile_reportsProfileNotFound() {
         val session = session(MemoryConfigStorage())
 
         val outcome = session.setActiveProfile("tidak-ada", MachineState.Stopped, false)
 
-        assertTrue(messages(outcome).single() is ModelsSessionMessage.ProfileNotFound)
+        assertEquals(listOf(ModelsSessionMessage.ProfileNotFound("tidak-ada")), messages(outcome))
     }
 
     @Test
-    fun activeProfile_survivesSessionRebuild() {
+    fun activeProfile_survivesRebuiltSession() {
         val storage = MemoryConfigStorage()
-        session(storage).let { first ->
-            first.importProfile("content://a.json", FakeReader(validJson("profil-1")))
-            first.setActiveProfile("profil-1", MachineState.Stopped, false)
-        }
+        val first = session(storage)
+        val profileId = first.importSevenClasses()
+        first.setThreshold(profileId)
+        first.setActiveProfile(profileId, MachineState.Stopped, false)
 
-        val rebuilt = session(storage).load()
+        // Sesi baru dari penyimpanan yang sama, seperti aplikasi dibuka ulang.
+        val rebuilt = session(storage)
 
-        assertEquals("profil-1", rebuilt.activeProfileId)
-        assertTrue(rebuilt.rows.single().isActive)
+        val active = rebuilt.activeProfile()
+        assertTrue("model aktif harus bertahan: $active", active is ActiveProfileState.Selected)
+        assertEquals(profileId, (active as ActiveProfileState.Selected).profile.profileId)
+        assertEquals("sampah 8.3.0", rebuilt.operationProfileLabel())
     }
 
     @Test
-    fun noActiveProfile_reportsNotSelected() {
-        val state = session(MemoryConfigStorage()).load()
+    fun commitThreshold_validText_isStored() {
+        val session = session(MemoryConfigStorage())
+        val profileId = session.importSevenClasses()
 
-        assertEquals(ActiveProfileAbsentReason.NOT_SELECTED, state.activeAbsentReason)
-        assertNull(state.activeProfileId)
-    }
+        val outcome = session.commitThreshold(profileId, "0,62")
 
-    @Test
-    fun operationProfileLabel_usesActiveProfileNameAndVersion() {
-        val storage = MemoryConfigStorage()
-        val session = session(storage)
-        session.importProfile("content://a.json", FakeReader(validJson("profil-1", "yolov8-v2")))
-
-        assertNull("belum aktif berarti belum ada label", session.operationProfileLabel())
-
-        session.setActiveProfile("profil-1", MachineState.Stopped, false)
-
-        assertEquals("yolov8-v2 2.0.0", session.operationProfileLabel())
-    }
-
-    @Test
-    fun commitThreshold_storesValueAndClearsProblems() {
-        val storage = MemoryConfigStorage()
-        val session = session(storage)
-        session.importProfile("content://a.json", FakeReader(validJson("profil-1")))
-
-        val outcome = session.commitThreshold("profil-1", "0,62")
-
-        assertTrue(messages(outcome).single() is ModelsSessionMessage.ThresholdSaved)
+        assertEquals(listOf(ModelsSessionMessage.ThresholdSaved(profileId)), messages(outcome))
         assertEquals("0.62", outcome.state.rows.single().thresholdText)
-        assertTrue(outcome.state.thresholdProblems.isEmpty())
+        assertTrue(outcome.state.rows.single().thresholdSet)
     }
 
     @Test
-    fun commitThreshold_invalidValue_showsFieldProblemAndKeepsStoredValue() {
-        val storage = MemoryConfigStorage()
-        val session = session(storage)
-        session.importProfile("content://a.json", FakeReader(validJson("profil-1")))
+    fun commitThreshold_nonNumber_isRejectedWithoutChangingProfile() {
+        val session = session(MemoryConfigStorage())
+        val profileId = session.importSevenClasses()
 
-        val outcome = session.commitThreshold("profil-1", "0")
+        val outcome = session.commitThreshold(profileId, "abc")
 
-        assertTrue(messages(outcome).single() is ModelsSessionMessage.ThresholdRejected)
+        val message = messages(outcome).single() as ModelsSessionMessage.ThresholdRejected
+        assertTrue("alasan field harus dibawa", message.problems.isEmpty())
         assertEquals(
-            ModelsProblemCode.INVALID_CONFIDENCE_THRESHOLD,
-            outcome.state.thresholdProblems.getValue("profil-1").single().code,
+            listOf(ModelsProblemCode.INVALID_VALUE),
+            outcome.state.thresholdProblems.getValue(profileId).map { it.code },
         )
-        assertEquals("0.45", session(storage).load().rows.single().thresholdText)
+        assertEquals("0", outcome.state.rows.single().thresholdText)
     }
 
     @Test
-    fun commitThreshold_nonNumber_reportsInvalidValue() {
+    fun commitThreshold_aboveOne_isRejectedWithValidatorProblems() {
+        val session = session(MemoryConfigStorage())
+        val profileId = session.importSevenClasses()
+
+        val outcome = session.commitThreshold(profileId, "1.5")
+
+        val message = messages(outcome).single() as ModelsSessionMessage.ThresholdRejected
+        assertEquals(
+            listOf(id.pemilah.model.ProfileProblemReason.INVALID_CONFIDENCE_THRESHOLD),
+            message.problems.map { it.reason },
+        )
+        assertEquals("0", outcome.state.rows.single().thresholdText)
+    }
+
+    @Test
+    fun draftThreshold_doesNotChangeStoredProfile() {
+        val session = session(MemoryConfigStorage())
+        val profileId = session.importSevenClasses()
+
+        val state = session.draftThreshold(profileId, "0.7")
+
+        assertEquals("0.7", state.thresholdTextOf(profileId))
+        assertEquals("0", session.load().rows.single().thresholdText)
+    }
+
+    @Test
+    fun operationProfileLabel_isNullWithoutActiveProfile() {
+        val session = session(MemoryConfigStorage())
+        session.importSevenClasses()
+
+        assertNull(session.operationProfileLabel())
+    }
+
+    @Test
+    fun groupingToggle_isStoredButNotExposedOnModelsScreen() {
+        // Sakelar kelompok tidak lagi tampil pada layar Models (instruksi pengguna
+        // 27 Oktober 2026); logika domainnya tetap ada dan tetap tersimpan.
         val storage = MemoryConfigStorage()
         val session = session(storage)
-        session.importProfile("content://a.json", FakeReader(validJson("profil-1")))
+        val profileId = session.importSevenClasses()
+        val repository = ProfileRepository(ConfigStore(storage))
 
-        val outcome = session.commitThreshold("profil-1", "abc")
+        val outcome = session.toggleGrouping(profileId, enabled = true)
+
+        assertEquals(listOf(ModelsSessionMessage.GroupingSaved(profileId, true)), messages(outcome))
+        val stored = repository.find(profileId)
+        assertTrue(stored is StoredProfile.Usable)
+        assertTrue((stored as StoredProfile.Usable).profile.groupingEnabled)
+    }
+
+    @Test
+    fun toggleGrouping_unknownProfile_reportsNotUsable() {
+        val session = session(MemoryConfigStorage())
+
+        val outcome = session.toggleGrouping("tidak-ada", enabled = true)
+
+        assertEquals(listOf(ModelsSessionMessage.ProfileNotUsable("tidak-ada")), messages(outcome))
+    }
+
+    @Test
+    fun profileWithModelFileRemoved_isNotUsableAndBlocksActivation() {
+        val storage = MemoryConfigStorage()
+        val session = session(storage)
+        val profileId = session.importSevenClasses()
+        session.setThreshold(profileId)
+        // Berkas model hilang dari penyimpanan aplikasi.
+        storage.binaryFiles.clear()
+
+        val outcome = session.setActiveProfile(profileId, MachineState.Stopped, hasActiveTarget = false)
+
+        val rejected = messages(outcome).single() as ModelsSessionMessage.SwitchRejected
+        assertEquals(ProfileSwitchBlockCode.PROFILE_INVALID, rejected.blocks.single().code)
+        assertEquals(ModelsProfileStatus.INVALID, outcome.state.rows.single().status)
+    }
+
+    @Test
+    fun storedProfileHelper_usesOfficialClasses() {
+        // Penjaga agar fixture test tetap berupa model tujuh kelas resmi.
+        val session = session(MemoryConfigStorage())
+        val profileId = session.importSevenClasses()
+
+        val row = session.load().rows.single { it.profileId == profileId }
 
         assertEquals(
-            ModelsProblemCode.INVALID_VALUE,
-            outcome.state.thresholdProblems.getValue("profil-1").single().code,
+            WasteClass.entries.toSet(),
+            row.labels.mapNotNull { it.wasteClass }.toSet(),
         )
-        assertEquals("0.45", session(storage).load().rows.single().thresholdText)
     }
-
-    @Test
-    fun toggleGrouping_isStoredPerProfile() {
-        val storage = MemoryConfigStorage()
-        val session = session(storage)
-        session.importProfile("content://a.json", FakeReader(validJson("profil-1")))
-
-        val outcome = session.toggleGrouping("profil-1", true)
-
-        assertTrue(messages(outcome).single() is ModelsSessionMessage.GroupingSaved)
-        assertEquals(true, outcome.state.rows.single().groupingEnabled)
-        assertEquals(true, session(storage).load().rows.single().groupingEnabled)
-    }
-
-    @Test
-    fun importRejected_keepsExistingProfiles() {
-        val storage = MemoryConfigStorage()
-        val session = session(storage)
-        session.importProfile("content://a.json", FakeReader(validJson("profil-1")))
-        val before = storage.files.toMap()
-
-        val outcome = session.importProfile("content://rusak.json", FakeReader("{ bukan json"))
-
-        assertTrue(messages(outcome).single() is ModelsSessionMessage.ImportRejected)
-        assertEquals(before, storage.files)
-        assertEquals(1, outcome.state.rows.size)
-    }
-
-    private class FakeReader(private val content: String?) : ProfileFileReader {
-        override fun read(uri: String): String? = content
-    }
-
-    private fun validJson(profileId: String, name: String = "profil-$profileId") = """
-        {
-          "schemaVersion": 1,
-          "profileId": "$profileId",
-          "name": "$name",
-          "version": "2.0.0",
-          "modelFile": "profile-assets/$profileId.onnx",
-          "labels": ["Organik"],
-          "classMapping": { "Organik": "ORGANIK" },
-          "input": {
-            "width": 640, "height": 640,
-            "normalization": "scale_0_1", "layout": "nchw"
-          },
-          "output": {
-            "format": "yolo_v8", "boxesNormalized": true, "hasObjectness": false
-          },
-          "confidenceThreshold": 0.45,
-          "groupingEnabled": false,
-          "binAssignment": { "ORGANIK": "B1" }
-        }
-    """.trimIndent()
 }

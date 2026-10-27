@@ -105,7 +105,11 @@ class ProfileSwitchGuardTest {
 
     @Test
     fun invalidCandidateProfile_isRejectedWithValidatorProblems() {
-        val invalid = candidateProfile.copy(confidenceThreshold = 0.0)
+        val invalid = candidateProfile.copy(
+            labels = emptyList(),
+            classMapping = emptyMap(),
+            binAssignment = emptyMap(),
+        )
 
         val decision = ProfileSwitchGuard.evaluate(
             MachineState.Stopped,
@@ -118,7 +122,37 @@ class ProfileSwitchGuardTest {
         assertEquals(ProfileSwitchBlockCode.PROFILE_INVALID, block.code)
         assertTrue(
             "alasan validator harus dibawa: ${block.problems}",
-            block.problems.any { it.reason == ProfileProblemReason.INVALID_CONFIDENCE_THRESHOLD },
+            block.problems.any { it.reason == ProfileProblemReason.NO_LABELS },
+        )
+    }
+
+    @Test
+    fun unsetConfidenceThreshold_isRejectedWithThresholdCode() {
+        // Model hasil impor ONNX menyimpan ambang `0.0` = "belum ditetapkan"
+        // (D-09). Model itu lolos validator, tetapi tidak boleh diaktifkan
+        // sebelum operator menetapkan ambang (MOD-04).
+        val unset = candidateProfile.copy(confidenceThreshold = 0.0)
+
+        val codes = rejected(
+            ProfileSwitchGuard.evaluate(
+                MachineState.Stopped,
+                hasActiveTarget = false,
+                unset,
+            ),
+        )
+
+        assertEquals(listOf(ProfileSwitchBlockCode.CONFIDENCE_THRESHOLD_UNSET), codes)
+    }
+
+    @Test
+    fun setConfidenceThreshold_isAllowed() {
+        assertEquals(
+            ProfileSwitchDecision.Allowed,
+            ProfileSwitchGuard.evaluate(
+                MachineState.Stopped,
+                hasActiveTarget = false,
+                candidateProfile.copy(confidenceThreshold = 0.5),
+            ),
         )
     }
 
@@ -145,8 +179,8 @@ class ProfileSwitchGuardTest {
     @Test
     fun rejectedSwitch_leavesActiveProfileUntouched() {
         val repository = ProfileRepository(ConfigStore(MemoryConfigStorage()))
-        repository.save(currentProfile)
-        repository.save(candidateProfile)
+        repository.saveWithModel(currentProfile, MODEL_BYTES)
+        repository.saveWithModel(candidateProfile, MODEL_BYTES)
         repository.setActive(currentProfile.profileId)
 
         val decision = ProfileSwitchGuard.evaluate(
@@ -162,8 +196,8 @@ class ProfileSwitchGuardTest {
     @Test
     fun allowedSwitch_keepsPreviousProfileStoredAndUsable() {
         val repository = ProfileRepository(ConfigStore(MemoryConfigStorage()))
-        repository.save(currentProfile)
-        repository.save(candidateProfile)
+        repository.saveWithModel(currentProfile, MODEL_BYTES)
+        repository.saveWithModel(candidateProfile, MODEL_BYTES)
         repository.setActive(currentProfile.profileId)
 
         val decision = ProfileSwitchGuard.evaluate(
@@ -176,5 +210,10 @@ class ProfileSwitchGuardTest {
         assertEquals(ProfileWriteResult.Written, repository.setActive(candidateProfile.profileId))
         assertEquals(ActiveProfileState.Selected(candidateProfile), repository.active())
         assertEquals(2, repository.list().size)
+    }
+
+    private companion object {
+        /** Isi model tiruan; yang diuji adalah keberadaan berkas, bukan isinya. */
+        val MODEL_BYTES = byteArrayOf(1, 2, 3)
     }
 }

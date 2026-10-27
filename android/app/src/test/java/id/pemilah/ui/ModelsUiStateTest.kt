@@ -8,15 +8,15 @@ import id.pemilah.model.ModelProfile
 import id.pemilah.model.Normalization
 import id.pemilah.model.OutputFormat
 import id.pemilah.model.OutputSpec
+import id.pemilah.model.ProfileEditResult
 import id.pemilah.model.ProfileJsonProblem
 import id.pemilah.model.ProfileJsonProblemReason
 import id.pemilah.model.ProfileProblem
 import id.pemilah.model.ProfileProblemReason
-import id.pemilah.model.StoredProfile
-import id.pemilah.model.ProfileEditResult
+import id.pemilah.model.ProfileRepository
 import id.pemilah.model.ProfileSettings
 import id.pemilah.model.ProfileWriteResult
-import id.pemilah.model.ProfileRepository
+import id.pemilah.model.StoredProfile
 import id.pemilah.model.TensorLayout
 import id.pemilah.storage.ConfigStore
 import id.pemilah.storage.MemoryConfigStorage
@@ -27,9 +27,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Proyeksi layar Models (WP-07): daftar kosong menghasilkan keadaan kosong,
- * profil ditolak menampilkan alasannya, profil aktif ditandai, dan label tanpa
- * pemetaan ditandai eksplisit (UI-02, MOD-02).
+ * Proyeksi layar Models (WP-09, D-09): daftar kosong menghasilkan keadaan
+ * kosong, model ditolak menampilkan alasannya, model aktif ditandai, label tanpa
+ * pemetaan ditandai eksplisit, dan ambang `0.0` terbaca sebagai "belum
+ * ditetapkan" (UI-02, MOD-02, MOD-04).
  */
 class ModelsUiStateTest {
 
@@ -38,15 +39,18 @@ class ModelsUiStateTest {
         profileId = "profil-1",
         name = "yolov8-sampah-v2",
         version = "2.0.0",
-        modelFile = "profile-assets/yolov8-sampah-v2.onnx",
+        modelFile = "model-profil-1.onnx",
         labels = listOf("Organik", "Kertas_lembaran"),
         classMapping = mapOf("Organik" to WasteClass.ORGANIK, "Kertas_lembaran" to WasteClass.KARDUS),
         input = InputSpec(640, 640, Normalization.SCALE_0_1, TensorLayout.NCHW),
-        output = OutputSpec(OutputFormat.YOLO_V8, boxesNormalized = true, hasObjectness = false),
+        output = OutputSpec(OutputFormat.YOLO_V8, boxesNormalized = false, hasObjectness = false),
         confidenceThreshold = 0.45,
         groupingEnabled = false,
         binAssignment = mapOf(WasteClass.ORGANIK to "B1", WasteClass.KARDUS to null),
     )
+
+    /** Isi model tiruan; proyeksi hanya peduli keberadaan berkas model. */
+    private val modelBytes = byteArrayOf(1, 2, 3)
 
     private fun usable(profile: ModelProfile = this.profile) = StoredProfile.Usable(
         fileName = "profile-${profile.profileId}.json",
@@ -73,17 +77,18 @@ class ModelsUiStateTest {
     }
 
     @Test
-    fun usableProfile_rowIsValidWithLabelsAndBins() {
+    fun usableProfile_rowIsValidWithClassesFromModel() {
         val row = ModelsUiState.from(listOf(usable()), noneSelected).rows.single()
 
         assertEquals(ModelsProfileStatus.VALID, row.status)
         assertEquals("yolov8-sampah-v2", row.name)
         assertEquals("2.0.0", row.version)
         assertTrue(row.problems.isEmpty())
+        assertEquals(2, row.classCount)
         assertEquals(
             listOf(
-                ModelsLabelUi("Organik", WasteClass.ORGANIK, "B1"),
-                ModelsLabelUi("Kertas_lembaran", WasteClass.KARDUS, null),
+                ModelsLabelUi("Organik", WasteClass.ORGANIK),
+                ModelsLabelUi("Kertas_lembaran", WasteClass.KARDUS),
             ),
             row.labels,
         )
@@ -119,9 +124,9 @@ class ModelsUiStateTest {
             profileId = profile.profileId,
             jsonProblems = emptyList(),
             validationProblems = listOf(
-                ProfileProblem("confidenceThreshold", ProfileProblemReason.INVALID_CONFIDENCE_THRESHOLD),
+                ProfileProblem("classMapping.Kertas_lembaran", ProfileProblemReason.LABEL_NOT_MAPPED),
             ),
-            profile = profile.copy(confidenceThreshold = 0.0),
+            profile = profile.copy(classMapping = mapOf("Organik" to WasteClass.ORGANIK)),
         )
 
         val row = ModelsUiState.from(listOf(broken), noneSelected).rows.single()
@@ -131,13 +136,13 @@ class ModelsUiStateTest {
         assertEquals(
             listOf(
                 ModelsProblemUi(
-                    field = "confidenceThreshold",
-                    code = ModelsProblemCode.INVALID_CONFIDENCE_THRESHOLD,
+                    field = "classMapping.Kertas_lembaran",
+                    code = ModelsProblemCode.LABEL_NOT_MAPPED,
                 ),
             ),
             row.problems,
         )
-        assertEquals(2, row.labels.size)
+        assertEquals(2, row.classCount)
     }
 
     @Test
@@ -156,8 +161,8 @@ class ModelsUiStateTest {
 
         assertEquals(
             listOf(
-                ModelsLabelUi("Organik", WasteClass.ORGANIK, "B1"),
-                ModelsLabelUi("Kertas_lembaran", null, null),
+                ModelsLabelUi("Organik", WasteClass.ORGANIK),
+                ModelsLabelUi("Kertas_lembaran", null),
             ),
             row.labels,
         )
@@ -179,8 +184,30 @@ class ModelsUiStateTest {
         assertEquals(ModelsProfileStatus.UNREADABLE, row.status)
         assertNull(row.name)
         assertTrue(row.labels.isEmpty())
+        assertEquals(0, row.classCount)
         assertEquals(ModelsProblemCode.UNKNOWN_SCHEMA_VERSION, row.problems.single().code)
         assertEquals("99", row.problems.single().detail)
+    }
+
+    @Test
+    fun modelFileMissing_isReportedAsReason() {
+        val broken = StoredProfile.Broken(
+            fileName = "profile-profil-1.json",
+            profileId = profile.profileId,
+            jsonProblems = emptyList(),
+            validationProblems = listOf(
+                ProfileProblem("modelFile", ProfileProblemReason.MODEL_FILE_MISSING),
+            ),
+            profile = profile,
+        )
+
+        val row = ModelsUiState.from(listOf(broken), noneSelected).rows.single()
+
+        assertEquals(ModelsProfileStatus.INVALID, row.status)
+        assertEquals(
+            ModelsProblemUi("modelFile", ModelsProblemCode.MODEL_FILE_MISSING),
+            row.problems.single(),
+        )
     }
 
     @Test
@@ -188,9 +215,22 @@ class ModelsUiStateTest {
         val row = ModelsUiState.from(listOf(usable()), noneSelected).rows.single()
 
         assertEquals("0.45", row.thresholdText)
+        assertTrue("ambang tersimpan bukan keadaan belum ditetapkan", row.thresholdSet)
         assertEquals("45%", ModelsNumbers.toPercentText(0.45))
         assertEquals("45.5%", ModelsNumbers.toPercentText(0.455))
         assertEquals("0.455", ModelsNumbers.fractionToText(0.455))
+    }
+
+    @Test
+    fun unsetThreshold_rowReportsThresholdNotSet() {
+        // Model hasil impor ONNX menyimpan `0.0` = "belum ditetapkan" (D-09).
+        val row = ModelsUiState.from(
+            listOf(usable(profile.copy(confidenceThreshold = 0.0))),
+            noneSelected,
+        ).rows.single()
+
+        assertEquals("0", row.thresholdText)
+        assertFalse("ambang 0.0 berarti belum ditetapkan", row.thresholdSet)
     }
 
     @Test
@@ -220,9 +260,9 @@ class ModelsUiStateTest {
     fun thresholdCommit_storesNewValueForOneProfileOnly() {
         val storage = MemoryConfigStorage()
         val repository = ProfileRepository(ConfigStore(storage))
-        repository.save(profile)
-        val other = profile.copy(profileId = "profil-2", name = "lain")
-        repository.save(other)
+        repository.saveWithModel(profile, modelBytes)
+        val other = profile.copy(profileId = "profil-2", name = "lain", modelFile = "model-profil-2.onnx")
+        repository.saveWithModel(other, modelBytes)
 
         val edited = ProfileSettings.withConfidenceThreshold(profile, 0.62)
         assertTrue(edited is ProfileEditResult.Edited)
@@ -238,7 +278,7 @@ class ModelsUiStateTest {
 
     @Test
     fun invalidThreshold_producesFieldProblemAndLeavesProfileUntouched() {
-        val problems = ProfileSettings.withConfidenceThreshold(profile, 0.0)
+        val problems = ProfileSettings.withConfidenceThreshold(profile, 1.5)
         assertTrue(problems is ProfileEditResult.Rejected)
         val rejected = (problems as ProfileEditResult.Rejected).problems
             .map { it.toUi() }
@@ -268,25 +308,24 @@ class ModelsUiStateTest {
     }
 
     @Test
-    fun groupingToggle_isStoredPerProfile() {
+    fun groupingToggle_isStillStoredInDomain() {
+        // Sakelar kelompok tidak lagi tampil pada layar Models (instruksi pengguna
+        // 27 Oktober 2026), tetapi logika domainnya tetap ada dan tetap tersimpan.
         val storage = MemoryConfigStorage()
         val repository = ProfileRepository(ConfigStore(storage))
-        repository.save(profile)
-        val other = profile.copy(profileId = "profil-2", name = "lain")
-        repository.save(other)
+        repository.saveWithModel(profile, modelBytes)
 
         val toggled = ProfileSettings.withGroupingEnabled(profile, true)
         assertTrue(toggled is ProfileEditResult.Edited)
         repository.save((toggled as ProfileEditResult.Edited).profile)
 
-        val state = ModelsUiState.from(repository.list(), noneSelected)
-
-        assertEquals(true, state.rows.first { it.profileId == "profil-1" }.groupingEnabled)
-        assertEquals(false, state.rows.first { it.profileId == "profil-2" }.groupingEnabled)
+        val stored = repository.find("profil-1")
+        assertTrue(stored is StoredProfile.Usable)
+        assertTrue((stored as StoredProfile.Usable).profile.groupingEnabled)
     }
 
     @Test
-    fun unreadableProfile_hasNoThresholdOrGroupingValue() {
+    fun unreadableProfile_hasNoThresholdValue() {
         val broken = StoredProfile.Broken(
             fileName = "profile-rusak.json",
             profileId = "rusak",
@@ -297,7 +336,7 @@ class ModelsUiStateTest {
         val row = ModelsUiState.from(listOf(broken), noneSelected).rows.single()
 
         assertNull(row.thresholdText)
-        assertNull(row.groupingEnabled)
+        assertFalse(row.thresholdSet)
     }
 
     @Test

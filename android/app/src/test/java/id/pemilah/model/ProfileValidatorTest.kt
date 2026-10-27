@@ -153,9 +153,20 @@ class ProfileValidatorTest {
     }
 
     @Test
-    fun validate_confidenceZero_isRejected() {
-        val reasons = reasonsOf(
+    fun validate_confidenceZero_isAcceptedAsUnset() {
+        // `0.0` berarti "belum ditetapkan" (D-09): model hasil impor ONNX belum
+        // punya ambang pilihan operator. Yang memblokir pemakaian adalah
+        // `ProfileSwitchGuard`, bukan validator.
+        assertEquals(
+            ProfileValidation.Valid,
             ProfileValidator.validate(ProfileFixture.profile(confidenceThreshold = 0.0)),
+        )
+    }
+
+    @Test
+    fun validate_confidenceNegative_isRejected() {
+        val reasons = reasonsOf(
+            ProfileValidator.validate(ProfileFixture.profile(confidenceThreshold = -0.1)),
         )
 
         assertTrue(ProfileProblemReason.INVALID_CONFIDENCE_THRESHOLD in reasons)

@@ -5,27 +5,33 @@ import id.pemilah.storage.ConfigStore
 import id.pemilah.storage.MemoryConfigStorage
 import id.pemilah.storage.StoreProblemReason
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Bukti repositori profil (WP-04): simpan→daftar→muat setara, profil rusak tetap
- * terlihat beserta alasan, dan profil aktif yang hilang menghasilkan keadaan
- * kosong, bukan galat (MOD-01, MOD-02, MOD-03, NFR-03).
+ * Bukti repositori profil (WP-04, WP-05): simpan→daftar→muat setara, salinan
+ * berkas model tersimpan bersama profil, profil rusak tetap terlihat beserta
+ * alasan, dan profil aktif yang hilang menghasilkan keadaan kosong, bukan galat
+ * (MOD-01, MOD-02, MOD-03, NFR-03, D-09).
  */
 class ProfileRepositoryTest {
 
-    private fun repository(): Pair<ConfigStore, ProfileRepository> {
-        val store = ConfigStore(MemoryConfigStorage())
-        return store to ProfileRepository(store)
+    private class Fixture {
+        val storage = MemoryConfigStorage()
+        val store = ConfigStore(storage)
+        val repository = ProfileRepository(store)
     }
+
+    /** Isi model tiruan; yang diuji adalah keberadaan berkas, bukan isinya. */
+    private val modelBytes = byteArrayOf(1, 2, 3)
 
     private val validProfile = ModelProfile(
         schemaVersion = 1,
         profileId = "6f1a1d2c-0000-4000-8000-000000000001",
         name = "yolov8-sampah-v2",
         version = "2.0.0",
-        modelFile = "profile-assets/yolov8-sampah-v2.onnx",
+        modelFile = "model-6f1a1d2c-0000-4000-8000-000000000001.onnx",
         labels = listOf("Organik", "Kertas_lembaran"),
         classMapping = mapOf("Organik" to WasteClass.ORGANIK, "Kertas_lembaran" to WasteClass.KARDUS),
         input = InputSpec(640, 640, Normalization.SCALE_0_1, TensorLayout.NCHW),
@@ -37,39 +43,120 @@ class ProfileRepositoryTest {
 
     @Test
     fun save_list_find_roundTripIsEquivalent() {
-        val (_, repository) = repository()
+        val fixture = Fixture()
 
-        assertEquals(ProfileWriteResult.Written, repository.save(validProfile))
+        assertEquals(
+            ProfileWriteResult.Written,
+            fixture.repository.saveWithModel(validProfile, modelBytes),
+        )
 
-        val listed = repository.list()
+        val listed = fixture.repository.list()
         assertEquals(1, listed.size)
         val stored = listed.single()
         assertTrue("profil tersimpan harus dapat dipakai: $stored", stored is StoredProfile.Usable)
         assertEquals(validProfile, (stored as StoredProfile.Usable).profile)
 
-        val found = repository.find(validProfile.profileId)
+        val found = fixture.repository.find(validProfile.profileId)
         assertTrue(found is StoredProfile.Usable)
         assertEquals(validProfile, (found as StoredProfile.Usable).profile)
     }
 
     @Test
-    fun save_writesFileNamedAfterProfileId() {
-        val (store, repository) = repository()
+    fun saveWithModel_writesModelCopyAndProfileFile() {
+        val fixture = Fixture()
 
-        repository.save(validProfile)
+        fixture.repository.saveWithModel(validProfile, modelBytes)
 
         assertTrue(
-            "berkas harus memakai nama profile-<profileId>.json",
-            store.profileFileExists("profile-${validProfile.profileId}.json"),
+            "berkas model harus disalin ke penyimpanan aplikasi",
+            fixture.store.modelFileExists(validProfile.modelFile),
+        )
+        assertEquals(
+            "isi berkas model harus sama dengan yang diimpor",
+            modelBytes.toList(),
+            fixture.store.readModelFile(validProfile.modelFile)?.toList(),
+        )
+        assertTrue(
+            "berkas profil harus memakai nama profile-<profileId>.json",
+            fixture.store.profileFileExists("profile-${validProfile.profileId}.json"),
         )
     }
 
     @Test
-    fun save_invalidProfile_isRejectedAndWritesNothing() {
-        val (store, repository) = repository()
+    fun saveWithModel_invalidProfile_writesNeitherFile() {
+        val fixture = Fixture()
         val tooHigh = validProfile.copy(confidenceThreshold = 1.5)
 
-        val result = repository.save(tooHigh)
+        val result = fixture.repository.saveWithModel(tooHigh, modelBytes)
+
+        assertTrue("profil tidak sah harus ditolak: $result", result is ProfileWriteResult.Rejected)
+        assertEquals(emptyList<String>(), fixture.store.listProfileFiles())
+        assertFalse(
+            "model tidak boleh ditulis untuk profil yang ditolak",
+            fixture.store.modelFileExists(validProfile.modelFile),
+        )
+    }
+
+    @Test
+    fun saveWithModel_storageFailureOnModelFile_reportsStorageFailed() {
+        val fixture = Fixture()
+        fixture.storage.failWrite = true
+
+        val result = fixture.repository.saveWithModel(validProfile, modelBytes)
+
+        assertTrue(
+            "kegagalan tulis harus dilaporkan: $result",
+            result is ProfileWriteResult.StorageFailed,
+        )
+        assertEquals(emptyList<String>(), fixture.store.listProfileFiles())
+    }
+
+    @Test
+    fun find_profileWhoseModelFileIsGone_isBrokenWithModelFileMissing() {
+        val fixture = Fixture()
+        fixture.repository.saveWithModel(validProfile, modelBytes)
+        // Berkas model hilang, misalnya penyimpanan dibersihkan operator.
+        fixture.storage.binaryFiles.remove(validProfile.modelFile)
+
+        val stored = fixture.repository.find(validProfile.profileId)
+
+        assertTrue("profil tanpa model tidak boleh dipakai: $stored", stored is StoredProfile.Broken)
+        assertTrue(
+            "alasan berkas model hilang harus dibawa: $stored",
+            (stored as StoredProfile.Broken).validationProblems.any {
+                it.reason == ProfileProblemReason.MODEL_FILE_MISSING
+            },
+        )
+    }
+
+    @Test
+    fun active_profileWhoseModelFileIsGone_isNoneNotValid() {
+        val fixture = Fixture()
+        fixture.repository.saveWithModel(validProfile, modelBytes)
+        fixture.repository.setActive(validProfile.profileId)
+        fixture.storage.binaryFiles.remove(validProfile.modelFile)
+
+        assertEquals(
+            ActiveProfileState.None(ActiveProfileAbsentReason.NOT_VALID, validProfile.profileId),
+            fixture.repository.active(),
+        )
+    }
+
+    @Test
+    fun exists_isTrueForStoredProfileAndFalseOtherwise() {
+        val fixture = Fixture()
+        fixture.repository.saveWithModel(validProfile, modelBytes)
+
+        assertTrue(fixture.repository.exists(validProfile.profileId))
+        assertFalse("id yang belum dipakai bukan profil tersimpan", fixture.repository.exists("id-lain"))
+    }
+
+    @Test
+    fun save_invalidProfile_isRejectedAndWritesNothing() {
+        val fixture = Fixture()
+        val tooHigh = validProfile.copy(confidenceThreshold = 1.5)
+
+        val result = fixture.repository.save(tooHigh)
 
         assertTrue("ambang tidak sah harus ditolak: $result", result is ProfileWriteResult.Rejected)
         assertTrue(
@@ -77,33 +164,33 @@ class ProfileRepositoryTest {
                 it.reason == ProfileProblemReason.INVALID_CONFIDENCE_THRESHOLD
             },
         )
-        assertEquals(emptyList<String>(), store.listProfileFiles())
+        assertEquals(emptyList<String>(), fixture.store.listProfileFiles())
     }
 
     @Test
     fun list_brokenJsonFile_staysVisibleWithReason() {
-        val (store, repository) = repository()
-        store.writeProfileFile("profile-rusak.json", "{\"schemaVersion\": 1,")
+        val fixture = Fixture()
+        fixture.store.writeProfileFile("profile-rusak.json", "{\"schemaVersion\": 1,")
 
-        val listed = repository.list()
+        val listed = fixture.repository.list()
 
         assertEquals(1, listed.size)
         val stored = listed.single()
         assertTrue("profil rusak tidak boleh hilang: $stored", stored is StoredProfile.Broken)
         assertTrue((stored as StoredProfile.Broken).jsonProblems.isNotEmpty())
         // Tidak ada penghapusan otomatis berkas yang rusak.
-        assertTrue(store.profileFileExists("profile-rusak.json"))
+        assertTrue(fixture.store.profileFileExists("profile-rusak.json"))
     }
 
     @Test
     fun list_fileFailingValidation_reportsValidatorProblems() {
-        val (store, repository) = repository()
+        val fixture = Fixture()
         val withoutLabels = ProfileJson.encode(
             validProfile.copy(labels = emptyList(), classMapping = emptyMap(), binAssignment = emptyMap()),
         )
-        store.writeProfileFile("profile-tanpa-label.json", withoutLabels)
+        fixture.store.writeProfileFile("profile-tanpa-label.json", withoutLabels)
 
-        val stored = repository.list().single()
+        val stored = fixture.repository.list().single()
 
         assertTrue(stored is StoredProfile.Broken)
         assertTrue(
@@ -116,76 +203,81 @@ class ProfileRepositoryTest {
 
     @Test
     fun list_ignoresTemporaryFilesAndForeignNames() {
-        val (store, repository) = repository()
-        repository.save(validProfile)
-        store.writeProfileFile("profile-belum-selesai.json.tmp", "{\"separuh\":")
+        val fixture = Fixture()
+        fixture.repository.saveWithModel(validProfile, modelBytes)
+        fixture.store.writeProfileFile("profile-belum-selesai.json.tmp", "{\"separuh\":")
 
         assertEquals(
             listOf("profile-${validProfile.profileId}.json"),
-            store.listProfileFiles(),
+            fixture.store.listProfileFiles(),
         )
     }
 
     @Test
     fun active_withoutSelection_isNoneNotSelected() {
-        val (_, repository) = repository()
+        val fixture = Fixture()
 
         assertEquals(
             ActiveProfileState.None(ActiveProfileAbsentReason.NOT_SELECTED),
-            repository.active(),
+            fixture.repository.active(),
         )
     }
 
     @Test
     fun active_afterSetActive_returnsStoredProfile() {
-        val (_, repository) = repository()
-        repository.save(validProfile)
+        val fixture = Fixture()
+        fixture.repository.saveWithModel(validProfile, modelBytes)
 
-        assertEquals(ProfileWriteResult.Written, repository.setActive(validProfile.profileId))
-        assertEquals(ActiveProfileState.Selected(validProfile), repository.active())
+        assertEquals(
+            ProfileWriteResult.Written,
+            fixture.repository.setActive(validProfile.profileId),
+        )
+        assertEquals(ActiveProfileState.Selected(validProfile), fixture.repository.active())
     }
 
     @Test
     fun active_whenProfileFileDeleted_isNoneFileMissing() {
-        val (store, repository) = repository()
-        repository.save(validProfile)
-        repository.setActive(validProfile.profileId)
+        val fixture = Fixture()
+        fixture.repository.saveWithModel(validProfile, modelBytes)
+        fixture.repository.setActive(validProfile.profileId)
         // Penanda aktif diarahkan ke profil yang tidak pernah ada berkasnya.
-        store.writeProfileFile("active-profile.txt", "profil-hantu")
+        fixture.store.writeProfileFile("active-profile.txt", "profil-hantu")
 
         assertEquals(
             ActiveProfileState.None(ActiveProfileAbsentReason.FILE_MISSING, "profil-hantu"),
-            repository.active(),
+            fixture.repository.active(),
         )
     }
 
     @Test
     fun setActive_unknownProfile_isNotFound() {
-        val (_, repository) = repository()
+        val fixture = Fixture()
 
-        assertEquals(ProfileWriteResult.NotFound("tidak-ada"), repository.setActive("tidak-ada"))
+        assertEquals(
+            ProfileWriteResult.NotFound("tidak-ada"),
+            fixture.repository.setActive("tidak-ada"),
+        )
     }
 
     @Test
     fun setActive_brokenProfile_isUnusableAndLeavesMarkerUnchanged() {
-        val (store, repository) = repository()
-        repository.save(validProfile)
-        repository.setActive(validProfile.profileId)
-        store.writeProfileFile("profile-rusak.json", "bukan json")
+        val fixture = Fixture()
+        fixture.repository.saveWithModel(validProfile, modelBytes)
+        fixture.repository.setActive(validProfile.profileId)
+        fixture.store.writeProfileFile("profile-rusak.json", "bukan json")
 
-        val result = repository.setActive("rusak")
+        val result = fixture.repository.setActive("rusak")
 
         assertTrue("profil rusak tidak boleh diaktifkan: $result", result is ProfileWriteResult.Unusable)
-        assertEquals(ActiveProfileState.Selected(validProfile), repository.active())
+        assertEquals(ActiveProfileState.Selected(validProfile), fixture.repository.active())
     }
 
     @Test
     fun save_storageFailure_reportedAsStorageFailed() {
-        val memory = MemoryConfigStorage()
-        val repository = ProfileRepository(ConfigStore(memory))
-        memory.failWrite = true
+        val fixture = Fixture()
+        fixture.storage.failWrite = true
 
-        val result = repository.save(validProfile)
+        val result = fixture.repository.save(validProfile)
 
         assertEquals(
             ProfileWriteResult.StorageFailed(StoreProblemReason.WRITE_FAILED, "disk penuh"),
