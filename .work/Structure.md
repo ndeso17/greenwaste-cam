@@ -109,3 +109,9 @@ Prasyarat lingkungan (dicatat di `../.work/evidence/device-requirements.md`):
 - Berkas hasil build (`android/build/`, `android/app/build/`,
   `android/.gradle/`, `android/local.properties`) tidak di-commit; daftarnya di
   `.gitignore`.
+
+## Komponen overlay shutter (27 Oktober 2026)
+- ui/CameraShutterControls.kt: kontrol presentasi state-driven, callback lama, animasi dan semantics.
+- ui/CameraOverlaySurface.kt: tint/blur latar visual tanpa blur teks; konstanta kontras.
+- src/debug/java/id/pemilah/ui/ShutterVerificationActivity.kt: fixture UI terkontrol; tidak ada pada release/aplikasi utama.
+- src/test/java/id/pemilah/ui/CameraOverlaySurfaceTest.kt: bukti kontras tint kasus terburuk.

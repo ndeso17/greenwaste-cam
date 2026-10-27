@@ -369,3 +369,24 @@ bukan baris di luar kamera. Status kamera/kalibrasi/USB mengambang di bawah.
 Kedua overlay tanpa latar; ruang kamera diperbesar. Batas atas menghormati
 status bar Android agar jam dan ikon sistem tidak bertumpuk dengan ringkasan.
 Ini menggantikan posisi ringkasan top-fixed-below-header pada revisi sebelumnya.
+
+## Revisi shutter — 27 Oktober 2026 (instruksi pengguna terbaru)
+Ketentuan ini menggantikan layout footer dan transparansi penuh sebelumnya.
+Preview mengisi lebar/tinggi konten setelah navigasi kiri; panel mesin menjadi
+overlay kanan gulir/lipat dan tidak mengecilkan kamera. Semua kontrol berada
+di dalam preview bawah tengah dengan gradien hitam tipis. Shutter utama 80 dp
+bercincin putih: idle hijau/putih dengan play, aktif kotak merah membulat.
+Secondary Berhenti 48 dp hanya saat aktif; keduanya menggunakan onStop lama.
+Tidak ada kendali aktuator/emergency stop baru. Guard StartGuardProjection
+tetap menjadi sumber enabled; state aktif bukan diubah sendiri oleh tombol.
+Animasi 180–220 ms untuk bentuk/warna dan tekanan; label aksi kecil, semantics
+button serta disabled tersedia. Status berjalan/berhenti tetap dinyatakan.
+Ringkasan di atas frame dan status kamera/kalibrasi/USB di atas kontrol memakai
+permukaan glass hitam alpha 0.64 serta teks putih, warna status hanya ikon.
+Backdrop blur API31+ pada sampel visual preview berukuran terbatas; teks
+tidak diblur, preview utama tidak diblur. API26–30 memakai tint tanpa blur.
+Kontras dihitung pada latar kamera putih sebagai kasus terburuk, minimal 4.5:1.
+Orientasi mengikuti perangkat; hilangkan kunci landscape. Insets sistem
+dihormati; teks overlay dapat digulir horizontal. Panel mesin overlay dibatasi
+lebar dan tinggi sisa agar tidak menutup shutter, baik portrait maupun tablet.
+Tidak ada perubahan alur deteksi, konfigurasi, protokol, atau data operasional.
