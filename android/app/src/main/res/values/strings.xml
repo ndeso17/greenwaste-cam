@@ -120,6 +120,18 @@
     <string name="guides_title">Garis bantu kamera</string>
     <string name="guides_toggle">Tampilkan garis bantu</string>
     <string name="guides_note">Garis pembagi tiga untuk membidik. Bukan area kerja hasil kalibrasi.</string>
+    <string name="classification_title">Uji klasifikasi</string>
+    <string name="classification_stopped">Pemantauan berhenti. Tekan Mulai pemantauan untuk menguji klasifikasi model aktif.</string>
+    <string name="classification_waiting">Menunggu frame pertama dari kamera.</string>
+    <string name="classification_confidence">Keyakinan</string>
+    <string name="classification_threshold">Ambang profil</string>
+    <string name="classification_below_threshold">Di bawah ambang keyakinan profil. Hasil ini belum layak dipakai.</string>
+    <string name="classification_model">Model</string>
+    <string name="classification_runner_up">Pesaing terdekat</string>
+    <string name="classification_failed_missing_model">Berkas model tidak ada di penyimpanan aplikasi. Impor ulang model.</string>
+    <string name="classification_failed_unreadable_model">Model tidak dapat dibuka. Berkas mungkin rusak atau formatnya tidak didukung.</string>
+    <string name="classification_failed_output_shape">Keluaran model tidak cocok dengan jumlah kelas profil.</string>
+    <string name="classification_failed_run">Inferensi gagal dijalankan pada perangkat ini.</string>
     <string name="action_stop_now">Berhenti</string>
     <string name="action_toggle_panels">Panel mesin</string>
 

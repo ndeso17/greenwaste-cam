@@ -61,6 +61,7 @@ import id.pemilah.Palette
 import id.pemilah.R
 import id.pemilah.camera.CameraPreview
 import id.pemilah.camera.CameraStatus
+import id.pemilah.inference.ArgbFrame
 import id.pemilah.usb.LinkState
 
 /**
@@ -79,8 +80,11 @@ import id.pemilah.usb.LinkState
 fun OperationScreen(
     modifier: Modifier = Modifier,
     state: OperationUiState? = null,
+    classification: ClassificationUi = ClassificationUi.Waiting,
     onStart: () -> Unit = {},
     onStop: () -> Unit = {},
+    onFrame: ((ArgbFrame) -> Unit)? = null,
+    onCameraStatusChange: (CameraStatus) -> Unit = {},
 ) {
     var panelVisible by rememberSaveable { mutableStateOf(false) }
     var panelScroll = rememberScrollState()
@@ -90,6 +94,9 @@ fun OperationScreen(
     var guidesVisible by rememberSaveable { mutableStateOf(true) }
     val ui = (state ?: rememberDefaultOperationState()).copy(cameraStatus = liveCameraStatus)
     val blockers = StartGuardProjection.blockers(ui)
+    // Frame hanya diminta saat pemantauan berjalan; di luar itu tidak ada
+    // inferensi diam-diam (D-13).
+    val frameCallback: ((ArgbFrame) -> Unit)? = if (ui.isRunning) onFrame else null
     BoxWithConstraints(modifier = modifier.fillMaxSize().safeDrawingPadding()) {
         val sidebarWidth = if (maxWidth < 600.dp) {
             (maxWidth - 24.dp).coerceAtMost(300.dp)
@@ -101,8 +108,12 @@ fun OperationScreen(
             onStart = onStart,
             onStop = onStop,
             cameraStatus = liveCameraStatus,
-            onCameraStatusChange = { liveCameraStatus = it },
+            onCameraStatusChange = { status ->
+                liveCameraStatus = status
+                onCameraStatusChange(status)
+            },
             guidesVisible = guidesVisible,
+            onFrame = frameCallback,
             modifier = Modifier.fillMaxSize(),
         )
         if (panelVisible) {
@@ -118,6 +129,7 @@ fun OperationScreen(
                     GuardBanner(blockers = blockers, isRunning = ui.isRunning, stage = ui.stage)
                 }
                 GuidesToggle(visible = guidesVisible, onVisibleChange = { guidesVisible = it })
+                ClassificationPanel(state = ui, classification = classification)
                 TargetPanel(state = ui)
                 RobotPanel(state = ui)
                 ConveyorPanel(state = ui)
@@ -211,6 +223,7 @@ private fun CameraStage(
     cameraStatus: CameraStatus,
     onCameraStatusChange: (CameraStatus) -> Unit,
     guidesVisible: Boolean,
+    onFrame: ((ArgbFrame) -> Unit)?,
     modifier: Modifier = Modifier,
 ) {
     var backdrop by remember { mutableStateOf<ImageBitmap?>(null) }
@@ -237,6 +250,7 @@ private fun CameraStage(
             modifier = Modifier.fillMaxSize(),
             onStatusChange = onCameraStatusChange,
             onBackdropFrame = { backdrop = it.asImageBitmap() },
+            onFrame = onFrame,
         )
         // Garis bantu bidik: panduan visual, bukan area kerja terkalibrasi.
         CameraGuidesOverlay(visible = guidesVisible)

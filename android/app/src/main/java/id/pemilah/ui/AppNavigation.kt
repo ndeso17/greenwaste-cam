@@ -24,6 +24,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -51,6 +52,7 @@ import id.pemilah.model.ModelImport
 import id.pemilah.model.ModelImportProblem
 import id.pemilah.model.ProfileRepository
 import id.pemilah.model.ProfileSwitchBlock
+import id.pemilah.onnx.OrtClassifier
 import id.pemilah.onnx.OrtOnnxModelInspector
 import id.pemilah.storage.ConfigStore
 import id.pemilah.storage.ContentModelReader
@@ -86,6 +88,32 @@ fun AppNavigation(
         ModelsSession(repository, ModelImport(repository, OrtOnnxModelInspector()))
     }
     val modelFileReader = remember(context) { ContentModelReader(context.applicationContext) }
+    // Satu sesi Operasi untuk seluruh aplikasi: status berjalan, hasil klasifikasi,
+    // dan model aktif dibaca dari sumber yang sama dengan layar Models (D-13).
+    val classifier = remember(context) {
+        OrtClassifier(ConfigStore(FileConfigStorage(context.applicationContext)))
+    }
+    val operationSession = remember(modelsSession, classifier) {
+        OperationSession(
+            classifier = classifier,
+            activeProfile = { modelsSession.activeProfile() },
+            machineState = { OperationSession.machineState() },
+            hasActiveTarget = { OperationSession.hasActiveTarget() },
+        )
+    }
+    var operationRunning by remember(operationSession) {
+        mutableStateOf(operationSession.isRunning)
+    }
+    var classificationUi by remember(operationSession) {
+        mutableStateOf(operationSession.classification)
+    }
+    DisposableEffect(operationSession) {
+        operationSession.onChange = {
+            operationRunning = operationSession.isRunning
+            classificationUi = operationSession.classification
+        }
+        onDispose { operationSession.onChange = {} }
+    }
     var modelsState by remember(modelsSession) { mutableStateOf(modelsSession.load()) }
     var importProblems by remember { mutableStateOf(emptyList<ModelImportProblem>()) }
     var switchBlocks by remember { mutableStateOf(emptyList<ProfileSwitchBlock>()) }
@@ -94,6 +122,9 @@ fun AppNavigation(
     fun applyOutcome(outcome: ModelsSessionOutcome) {
         val previousRows = modelsState.rows
         modelsState = outcome.state
+        // Profil aktif dapat hilang karena penghapusan; pemantauan harus berhenti
+        // daripada terus memakai model yang sudah tidak ada (D-13).
+        operationSession.onActiveProfileChanged()
         importProblems = outcome.messages
             .filterIsInstance<ModelsSessionMessage.ImportRejected>()
             .flatMap { it.problems }
@@ -147,10 +178,6 @@ fun AppNavigation(
                     )
                 },
                 onActivateProfile = { profileId ->
-                    // Pemilik state operasi belum membagikan status berjalan pada
-                    // tahap ini; guard tetap dijalankan dengan masukan sebenarnya
-                    // dari pemanggil dan diuji dengan matriks penuh pada
-                    // `ModelsSessionTest`.
                     applyOutcome(
                         modelsSession.setActiveProfile(
                             profileId = profileId,
@@ -163,6 +190,11 @@ fun AppNavigation(
                     applyOutcome(modelsSession.deleteProfile(profileId))
                 },
                 deleteResult = deleteResult,
+                operationRunning = operationRunning,
+                classification = classificationUi,
+                onStartOperation = { operationSession.start() },
+                onStopOperation = { operationSession.stop() },
+                onFrame = { frame -> operationSession.onFrame(frame) },
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -176,8 +208,7 @@ fun AppNavigation(
 }
 
 @Composable
-private fun NavigationRail(
-    current: AppDestination,
+private fun NavigationRail(    current: AppDestination,
     expanded: Boolean,
     onToggle: () -> Unit,
     onSelect: (AppDestination) -> Unit,
@@ -327,6 +358,11 @@ private fun DestinationContent(
     onActivateProfile: (String) -> Unit,
     onDeleteProfile: (String) -> Unit,
     deleteResult: ModelsDeleteUi?,
+    operationRunning: Boolean,
+    classification: ClassificationUi,
+    onStartOperation: () -> Unit,
+    onStopOperation: () -> Unit,
+    onFrame: (id.pemilah.inference.ArgbFrame) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (destination == AppDestination.OPERATION) {
@@ -334,8 +370,14 @@ private fun DestinationContent(
         // menampilkan nama dan versi tanpa memulai operasi (UI-01, T-038).
         OperationScreen(
             modifier = modifier,
-            state = rememberDefaultOperationState()
-                .copy(profileNameAndVersion = profileLabel),
+            state = rememberDefaultOperationState().copy(
+                profileNameAndVersion = profileLabel,
+                isRunning = operationRunning,
+            ),
+            classification = classification,
+            onStart = onStartOperation,
+            onStop = onStopOperation,
+            onFrame = onFrame,
         )
         return
     }
