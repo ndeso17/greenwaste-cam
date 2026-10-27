@@ -24,6 +24,12 @@ interface ConfigStorage {
     fun read(name: String): String?
     fun write(name: String, content: String)
 
+    /** Isi berkas biner, atau `null` bila berkas tidak ada. */
+    fun readBytes(name: String): ByteArray?
+
+    /** Tulis berkas biner apa adanya (tanpa konversi teks). */
+    fun writeBytes(name: String, content: ByteArray)
+
     /** Pindahkan [from] menjadi [to]; implementasi berkas memakai rename atomik. */
     fun replace(from: String, to: String)
 
@@ -93,6 +99,38 @@ class ConfigStore(private val storage: ConfigStorage) {
         runCatching { storage.exists(name) }.getOrDefault(false)
 
     /**
+     * Isi berkas model ONNX tersimpan (D-09, MOD-01).
+     *
+     * `null` berarti berkas tidak ada atau tidak terbaca; pemanggil melaporkan
+     * keadaan itu sebagai profil tanpa berkas model, bukan mengarang model.
+     */
+    fun readModelFile(name: String): ByteArray? = runCatching { storage.readBytes(name) }
+        .getOrNull()
+
+    /**
+     * Salin berkas model ke penyimpanan aplikasi lewat jalur tulis atomik.
+     *
+     * Berkas ditulis ke nama sementara lalu dipindahkan, sehingga mati listrik di
+     * tengah tulis tidak meninggalkan berkas model separuh yang tampak sah.
+     */
+    fun writeModelFile(name: String, content: ByteArray): SaveResult {
+        val temporary = "$name.tmp"
+        return try {
+            storage.writeBytes(temporary, content)
+            storage.replace(temporary, name)
+            SaveResult.Saved
+        } catch (error: Exception) {
+            SaveResult.Failed(
+                StoreProblemReason.WRITE_FAILED,
+                error.message ?: error::class.java.simpleName,
+            )
+        }
+    }
+
+    fun modelFileExists(name: String): Boolean =
+        runCatching { storage.exists(name) }.getOrDefault(false)
+
+    /**
      * `profileId` profil aktif; `null` berarti belum pernah dipilih (MOD-03).
      *
      * Berkas kosong atau hanya berisi spasi juga dianggap belum dipilih supaya
@@ -142,6 +180,10 @@ class ConfigStore(private val storage: ConfigStorage) {
         /** Awalan nama berkas profil; dipakai juga oleh `ProfileRepository`. */
         const val PROFILE_PREFIX: String = "profile-"
         const val PROFILE_EXTENSION: String = ".json"
+
+        /** Awalan dan akhiran berkas model ONNX tersimpan (D-09, MOD-01). */
+        const val MODEL_PREFIX: String = "model-"
+        const val MODEL_EXTENSION: String = ".onnx"
 
         /** Nama berkas penanda profil aktif (MOD-03). */
         const val ACTIVE_PROFILE_FILE: String = "active-profile.txt"

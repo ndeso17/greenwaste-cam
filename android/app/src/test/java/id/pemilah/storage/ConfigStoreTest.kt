@@ -15,6 +15,7 @@ import id.pemilah.config.RobotConfig
 import id.pemilah.config.RobotId
 import id.pemilah.config.RotationDirection
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -268,5 +269,37 @@ class ConfigStoreTest {
         val storage = StoreFixture.MemoryStorage()
 
         assertEquals(emptyList<String>(), storage.listNames("profile-"))
+    }
+
+    @Test
+    fun modelFile_storedAndReadBackAsBytes() {
+        val store = ConfigStore(StoreFixture.MemoryStorage())
+        val model = byteArrayOf(0x08, 0x07, 0x12, 0x00)
+
+        assertEquals(SaveResult.Saved, store.writeModelFile("model-abc.onnx", model))
+        assertTrue(store.modelFileExists("model-abc.onnx"))
+        assertEquals(model.toList(), store.readModelFile("model-abc.onnx")?.toList())
+    }
+
+    @Test
+    fun modelFile_missing_isAbsentNotError() {
+        val store = ConfigStore(StoreFixture.MemoryStorage())
+
+        assertNull(store.readModelFile("model-tidak-ada.onnx"))
+        assertFalse(store.modelFileExists("model-tidak-ada.onnx"))
+    }
+
+    @Test
+    fun modelFile_writeIsAtomic_leavesNoTemporaryFile() {
+        val storage = StoreFixture.MemoryStorage()
+        val store = ConfigStore(storage)
+
+        store.writeModelFile("model-abc.onnx", byteArrayOf(1, 2, 3))
+
+        assertEquals(
+            listOf("model-abc.onnx.tmp" to "model-abc.onnx"),
+            storage.replaced,
+        )
+        assertTrue(storage.listNames("model-").none { it.endsWith(".tmp") })
     }
 }

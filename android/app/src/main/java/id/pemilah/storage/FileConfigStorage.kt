@@ -22,11 +22,22 @@ class FileConfigStorage(context: Context) : ConfigStorage {
         File(directory, name).writeText(content)
     }
 
+    override fun readBytes(name: String): ByteArray? {
+        val file = File(directory, name)
+        return if (file.exists()) file.readBytes() else null
+    }
+
+    override fun writeBytes(name: String, content: ByteArray) {
+        File(directory, name).writeBytes(content)
+    }
+
     override fun replace(from: String, to: String) {
         val source = File(directory, from)
         val target = File(directory, to)
+        // Cadangan memakai penyalinan byte supaya berkas model ONNX tetap utuh
+        // (bukan dibaca sebagai teks).
         if (!source.renameTo(target)) {
-            target.writeText(source.readText())
+            source.copyTo(target, overwrite = true)
             source.delete()
         }
     }
