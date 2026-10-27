@@ -24,9 +24,9 @@ inferensi dan controller belum tersambung.**
 | Layar operasi landscape (rail 6 menu, header status, pratinjau kamera, panel target/robot/conveyor, ringkasan sesi, banner guard, kontrol bawah) | Ada dan berjalan di perangkat |
 | Rail navigasi berikon + dapat diperkecil (232 dp ⇄ 72 dp) | Ada, diuji unit test dan diukur di perangkat |
 | Pratinjau kamera (CameraX) | Berjalan |
-| Inferensi ONNX, decoder deteksi, filter area kerja | **Belum** — menunggu model tujuh kelas (B-02/B-17) dan geometri (B-03) |
+| Inferensi ONNX, decoder deteksi, filter area kerja | **Belum** menunggu model tujuh kelas (B-02/B-17) dan geometri (B-03) |
 | Pelacakan objek, pemetaan kelas→bak, guard start, invalidasi kalibrasi, antrean telemetri, transport USB | Logika ada + unit test; sambungan ke deteksi/controller belum |
-| Layar Models, Bot, Settings, Kalibrasi, Logs | **Belum** — menu sudah ada, isinya menyatakan "Belum dikonfigurasi" |
+| Layar Models, Bot, Settings, Kalibrasi, Logs | **Belum** menu sudah ada, isinya menyatakan "Belum dikonfigurasi" |
 | Uji dengan ESP32-S3 nyata | **Belum** (MANUAL-VERIFY) |
 
 Aplikasi tidak menampilkan angka atau status contoh. Nilai yang belum ada
@@ -131,4 +131,4 @@ B-04 (protokol controller), B-05 (gangguan), B-06 (ambang numerik), B-07
   `todo → wip → qc → done`.
 - Pekerjaan dijalankan satu agen dalam satu sesi; tidak ada sub-agen.
 - Semua perubahan di-commit, dengan pesan
-  `<tipe>(<lingkup>): <ringkasan>` (lihat `AGENTS.md` §13).
+  `<tipe>(<lingkup>): <ringkasan>` (lihat `AGENTS.md`).
