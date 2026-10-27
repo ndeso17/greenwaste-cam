@@ -1,6 +1,5 @@
 package id.pemilah
 
-import android.content.pm.ActivityInfo
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -37,9 +36,7 @@ internal val PemilahColors = darkColorScheme(
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Orientasi landscape adalah kebijakan aplikasi (D-UI-01, D-03): dikunci di
-        // sini, bukan di manifest, karena lint menolak `android:screenOrientation`.
-        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+        // Follow device orientation; the operation UI adapts to portrait and tablet windows.
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         setContent {

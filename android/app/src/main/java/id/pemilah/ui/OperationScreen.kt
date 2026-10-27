@@ -9,6 +9,10 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -16,13 +20,17 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -33,6 +41,12 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -47,8 +61,7 @@ import id.pemilah.usb.LinkState
 
 /**
  * Layar operasi sesuai `.work/OperationScreen.xml` dan `Design.md` §4:
- * header status → ringkasan sesi transparan → kamera + panel mesin/status →
- * kontrol operasi persisten di bawah.
+ * preview penuh → ringkasan glass di atas → status + shutter overlay di bawah.
  *
  * Aturan yang dijaga:
  * - Tahap 3 hanya memantau. Panel robot, tujuan bak, dan kecepatan menampilkan
@@ -71,60 +84,50 @@ fun OperationScreen(
     var liveCameraStatus by remember { mutableStateOf<CameraStatus>(CameraStatus.Starting) }
     val ui = (state ?: rememberDefaultOperationState()).copy(cameraStatus = liveCameraStatus)
     val blockers = StartGuardProjection.blockers(ui)
-    Column(modifier = modifier.fillMaxSize().statusBarsPadding()) {
-        Row(modifier = Modifier.weight(1f).fillMaxWidth()) {
-            Column(
-                modifier = Modifier
-                    .weight(2f)
-                    .fillMaxHeight()
-                    .padding(start = 16.dp, end = 12.dp, bottom = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(PanelGap),
-            ) {
-                CameraStage(
-                    state = ui,
-                    onOpenHistory = onOpenHistory,
-                    cameraStatus = liveCameraStatus,
-                    onCameraStatusChange = { liveCameraStatus = it },
-                    modifier = Modifier.weight(1f).fillMaxWidth(),
-                )
-            }
-            Column(
-                modifier = (if (panelVisible) Modifier.weight(1f) else Modifier.width(88.dp))
-                    .fillMaxHeight()
-                    .padding(end = 16.dp, bottom = 8.dp),
-            ) {
-                TextButton(
-                    onClick = { panelVisible = !panelVisible },
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                ) {
-                    Text(
-                        text = stringResource(
-                            if (panelVisible) R.string.action_hide_panels else R.string.action_show_panels,
-                        ),
-                        color = Palette.accent,
-                    )
-                }
-                if (panelVisible) {
-                    Column(
-                        modifier = Modifier.weight(1f).fillMaxWidth().verticalScroll(panelScroll),
-                        verticalArrangement = Arrangement.spacedBy(PanelGap),
-                    ) {
-                        if (blockers.isNotEmpty() || ui.isRunning) {
-                            GuardBanner(blockers = blockers, isRunning = ui.isRunning, stage = ui.stage)
-                        }
-                        TargetPanel(state = ui)
-                        RobotPanel(state = ui)
-                        ConveyorPanel(state = ui)
-                    }
-                }
-            }
+    BoxWithConstraints(modifier = modifier.fillMaxSize().safeDrawingPadding()) {
+        val sidebarWidth = if (maxWidth < 600.dp) {
+            (maxWidth - 24.dp).coerceAtMost(300.dp)
+        } else {
+            (maxWidth * 0.36f).coerceAtMost(340.dp)
         }
-        OperationControls(
+        CameraStage(
             state = ui,
-            blockers = blockers,
+            onOpenHistory = onOpenHistory,
             onStart = onStart,
             onStop = onStop,
+            cameraStatus = liveCameraStatus,
+            onCameraStatusChange = { liveCameraStatus = it },
+            modifier = Modifier.fillMaxSize(),
         )
+        if (panelVisible) {
+            Column(
+                modifier = Modifier.align(Alignment.TopEnd)
+                    .padding(top = 64.dp, end = 8.dp, bottom = 196.dp)
+                    .width(sidebarWidth).fillMaxHeight()
+                    .background(Palette.surface.copy(alpha = 0.94f), RoundedCornerShape(16.dp))
+                    .verticalScroll(panelScroll).padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(PanelGap),
+            ) {
+                if (blockers.isNotEmpty() || ui.isRunning) {
+                    GuardBanner(blockers = blockers, isRunning = ui.isRunning, stage = ui.stage)
+                }
+                TargetPanel(state = ui)
+                RobotPanel(state = ui)
+                ConveyorPanel(state = ui)
+            }
+        }
+        val toggleLabel = stringResource(
+            if (panelVisible) R.string.action_hide_panels else R.string.action_show_panels,
+        )
+        IconButton(
+            onClick = { panelVisible = !panelVisible },
+            modifier = Modifier.align(Alignment.TopEnd).padding(8.dp).size(48.dp)
+                .background(Color.Black.copy(alpha = CameraOverlayScrimAlpha), RoundedCornerShape(24.dp))
+                .statusDescription(toggleLabel),
+        ) {
+            Icon(if (panelVisible) Icons.Rounded.Close else Icons.Rounded.Tune,
+                contentDescription = null, tint = Color.White)
+        }
     }
 }
 
@@ -146,23 +149,23 @@ private fun CameraStatusStrip(state: OperationUiState, modifier: Modifier = Modi
         modifier = modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
     ) {
-        StatusInfoField(
+        CameraStatusField(
             label = stringResource(R.string.header_camera),
             value = stringResource(state.cameraStatus.labelRes()),
             tone = state.cameraStatus.tone(),
         )
         StatusInfoDivider()
-        StatusInfoField(
+        CameraStatusField(
             label = stringResource(R.string.header_calibration),
             value = stringResource(state.calibration.labelRes()),
             tone = state.calibration.tone(),
         )
         StatusInfoDivider()
-        StatusInfoField(
+        CameraStatusField(
             label = stringResource(R.string.header_usb),
             value = stringResource(state.linkState.labelRes()),
             tone = state.linkState.tone(),
@@ -171,18 +174,37 @@ private fun CameraStatusStrip(state: OperationUiState, modifier: Modifier = Modi
 }
 
 @Composable
+private fun CameraStatusField(label: String, value: String, tone: StatusTone) {
+    Row(
+        modifier = Modifier.statusDescription("$label: $value"),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        StatusIcon(tone)
+        Column {
+            Text(label, color = Color.White, fontSize = 10.sp)
+            Text(value, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+@Composable
 private fun CameraStage(
     state: OperationUiState,
     onOpenHistory: () -> Unit,
+    onStart: () -> Unit,
+    onStop: () -> Unit,
     cameraStatus: CameraStatus,
     onCameraStatusChange: (CameraStatus) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var backdrop by remember { mutableStateOf<ImageBitmap?>(null) }
+    var cameraBounds by remember { mutableStateOf(Rect.Zero) }
     Box(
         modifier = modifier
             .clipToBounds()
-            .background(Palette.surfaceRaised, RoundedCornerShape(12.dp))
-            .border(1.dp, Palette.onSurfaceMuted.copy(alpha = 0.12f), RoundedCornerShape(12.dp)),
+            .onGloballyPositioned { cameraBounds = it.boundsInRoot() }
+            .background(Palette.surface),
     ) {
         val context = LocalContext.current
         var permissionGranted by remember {
@@ -199,6 +221,7 @@ private fun CameraStage(
             hasPermission = permissionGranted,
             modifier = Modifier.fillMaxSize(),
             onStatusChange = onCameraStatusChange,
+            onBackdropFrame = { backdrop = it.asImageBitmap() },
         )
         // Overlay hanya menggambar data yang benar-benar ada; saat ini belum ada
         // geometri terkalibrasi sehingga tidak ada kotak atau blok yang dikarang.
@@ -214,25 +237,26 @@ private fun CameraStage(
             hasPermission = permissionGranted,
             onRequestPermission = { launcher.launch(Manifest.permission.CAMERA) },
         )
-        Box(modifier = Modifier.align(Alignment.TopCenter)) {
+        CameraOverlaySurface(
+            backdrop = backdrop,
+            cameraBounds = cameraBounds,
+            modifier = Modifier.align(Alignment.TopStart)
+                .padding(start = 8.dp, end = 64.dp, top = 8.dp).fillMaxWidth(),
+        ) {
             SessionSummaryBar(state = state, onOpenHistory = onOpenHistory)
         }
-        CameraStatusStrip(
-            state = state,
-            modifier = Modifier.align(Alignment.BottomCenter),
-        )
-        if (state.isRunning) {
-            Text(
-                text = stringResource(R.string.operation_status_monitoring),
-                color = Palette.success,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.SemiBold,
-                modifier = Modifier
-                    .align(Alignment.TopEnd)
-                    .padding(12.dp)
-                    .background(Palette.surface, RoundedCornerShape(6.dp))
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
-            )
+        Column(
+            modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            CameraOverlaySurface(
+                backdrop = backdrop,
+                cameraBounds = cameraBounds,
+                modifier = Modifier.padding(horizontal = 8.dp).widthIn(max = 640.dp).fillMaxWidth(),
+            ) {
+                CameraStatusStrip(state = state)
+            }
+            CameraShutterControls(state = state, onStart = onStart, onStop = onStop)
         }
     }
 }
@@ -279,7 +303,7 @@ private fun SessionSummaryBar(state: OperationUiState, onOpenHistory: () -> Unit
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(stringResource(R.string.panel_session), color = Palette.onSurface, fontSize = 12.sp)
+        Text(stringResource(R.string.panel_session), color = Color.White, fontSize = 12.sp)
         val session = state.session
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -319,7 +343,7 @@ private fun SessionSummaryBar(state: OperationUiState, onOpenHistory: () -> Unit
                     StatusTone.MUTED
                 },
             )
-            StatusChip(
+            CameraStatusField(
                 label = stringResource(R.string.session_backend),
                 value = stringResource(
                     when (state.backend) {
@@ -335,7 +359,7 @@ private fun SessionSummaryBar(state: OperationUiState, onOpenHistory: () -> Unit
                 },
             )
             TextButton(onClick = onOpenHistory) {
-                Text(stringResource(R.string.session_open_history), color = Palette.accent)
+                Text(stringResource(R.string.session_open_history), color = Color.White)
             }
         }
     }
@@ -362,7 +386,7 @@ private fun SessionMetric(
             StatusIcon(tone)
             Text(
                 text = label,
-                color = Palette.onSurfaceMuted,
+                color = Color.White,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
@@ -370,7 +394,7 @@ private fun SessionMetric(
         }
         Text(
             text = value?.toString() ?: stringResource(R.string.session_value_none),
-            color = if (value == null) Palette.onSurfaceMuted else Palette.onSurface,
+            color = if (value == null) Color.White else Color.White,
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
         )
@@ -489,7 +513,7 @@ private fun GuardBanner(blockers: List<StartBlocker>, isRunning: Boolean, stage:
                         R.string.operation_mode_monitoring
                     },
                 ),
-                color = Palette.success,
+                color = Color.White,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -497,7 +521,7 @@ private fun GuardBanner(blockers: List<StartBlocker>, isRunning: Boolean, stage:
         }
         Text(
             text = stringResource(R.string.guard_banner_title),
-            color = Palette.danger,
+            color = Color.White,
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
         )
@@ -505,55 +529,6 @@ private fun GuardBanner(blockers: List<StartBlocker>, isRunning: Boolean, stage:
             Text(
                 text = stringResource(blocker.messageRes()),
                 color = Palette.onSurface,
-                fontSize = 12.sp,
-            )
-        }
-    }
-}
-
-@Composable
-private fun OperationControls(
-    state: OperationUiState,
-    blockers: List<StartBlocker>,
-    onStart: () -> Unit,
-    onStop: () -> Unit,
-) {
-    val sorting = state.stage == OperationStage.SORTING
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .background(Palette.surfaceRaised)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        PrimaryAction(
-            label = stringResource(
-                if (sorting) R.string.operation_start_sorting else R.string.operation_start_monitoring,
-            ),
-            onClick = onStart,
-            enabled = StartGuardProjection.canStart(state),
-        )
-        PrimaryAction(
-            label = stringResource(
-                if (sorting) R.string.operation_stop_sorting else R.string.operation_stop_monitoring,
-            ),
-            onClick = onStop,
-            enabled = StartGuardProjection.canStop(state),
-            tone = StatusTone.DANGER,
-        )
-        Text(
-            text = stringResource(
-                if (state.isRunning) R.string.operation_status_running else R.string.operation_status_stopped,
-            ),
-            color = if (state.isRunning) Palette.success else Palette.onSurfaceMuted,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
-        run {
-            Text(
-                text = stringResource(R.string.operation_stop_hint),
-                color = Palette.onSurfaceMuted,
                 fontSize = 12.sp,
             )
         }
