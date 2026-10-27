@@ -95,6 +95,10 @@ private object StoreFixture {
         }
 
         override fun exists(name: String): Boolean = files.containsKey(name)
+
+        override fun listNames(prefix: String): List<String> = files.keys
+            .filter { it.startsWith(prefix) && !it.endsWith(".tmp") }
+            .sorted()
     }
 }
 
@@ -264,5 +268,28 @@ class ConfigStoreTest {
         val store = ConfigStore(StoreFixture.MemoryStorage())
 
         assertNull(store.readProfileFile("tidak-ada.txt"))
+    }
+
+    @Test
+    fun profileFileList_returnsOnlyCompleteProfileFiles() {
+        val storage = StoreFixture.MemoryStorage()
+        val store = ConfigStore(storage)
+        store.writeProfileFile("profile-b.json", "{}")
+        store.writeProfileFile("profile-a.json", "{}")
+        // Berkas sementara dari tulisan yang gagal tidak boleh muncul pada daftar.
+        storage.files["profile-c.json.tmp"] = "{\"separuh\":"
+        // Berkas lain yang bukan profil tidak ikut terdaftar.
+        storage.files["machine-config.txt"] = "schemaVersion=1"
+
+        val names = storage.listNames("profile-")
+
+        assertEquals(listOf("profile-a.json", "profile-b.json"), names)
+    }
+
+    @Test
+    fun profileFileList_emptyStorage_returnsEmptyListNotError() {
+        val storage = StoreFixture.MemoryStorage()
+
+        assertEquals(emptyList<String>(), storage.listNames("profile-"))
     }
 }

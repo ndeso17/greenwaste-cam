@@ -32,4 +32,25 @@ class FileConfigStorage(context: Context) : ConfigStorage {
     }
 
     override fun exists(name: String): Boolean = File(directory, name).exists()
+
+    /**
+     * Daftar berkas lengkap berawalan [prefix] (MOD-01). Nama berkas sementara
+     * berakhiran `.tmp` dilewati karena bisa berasal dari tulisan yang gagal di
+     * tengah jalan dan isinya belum tentu utuh.
+     */
+    override fun listNames(prefix: String): List<String> {
+        val files = directory.listFiles() ?: return emptyList()
+        return files
+            .asSequence()
+            .filter { it.isFile }
+            .map { it.name }
+            .filter { it.startsWith(prefix) }
+            .filterNot { it.endsWith(TEMPORARY_SUFFIX) }
+            .sorted()
+            .toList()
+    }
+
+    private companion object {
+        const val TEMPORARY_SUFFIX: String = ".tmp"
+    }
 }

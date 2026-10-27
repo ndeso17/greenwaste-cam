@@ -28,6 +28,15 @@ interface ConfigStorage {
     fun replace(from: String, to: String)
 
     fun exists(name: String): Boolean
+
+    /**
+     * Nama berkas yang tersedia dan berawalan [prefix], urut menaik.
+     *
+     * Berkas sementara `<nama>.tmp` yang ditinggalkan tulisan yang gagal tidak
+     * termasuk, sehingga daftar hanya memuat berkas yang sudah lengkap
+     * (MOD-01, NFR-03). Daftar kosong bukan galat: artinya belum ada profil.
+     */
+    fun listNames(prefix: String): List<String>
 }
 
 /**
