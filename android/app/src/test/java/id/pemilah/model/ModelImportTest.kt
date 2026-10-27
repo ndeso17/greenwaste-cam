@@ -73,6 +73,20 @@ class ModelImportTest {
                 ),
             )
         }
+
+        /** Model klasifikasi ResNet18: masukan 224×224, keluaran `[batch, C]` (D-10). */
+        fun acceptsClassification(labels: List<String>) {
+            result = OnnxInspectionResult.Inspected(
+                OnnxModelInfo(
+                    labels = labels,
+                    input = requireNotNull(OnnxMetadata.inputSpecOf(listOf(-1L, 3L, 224L, 224L))),
+                    output = requireNotNull(
+                        OnnxMetadata.outputSpecOf(listOf(-1L, labels.size.toLong()), labels.size),
+                    ),
+                    modelVersion = null,
+                ),
+            )
+        }
     }
 
     private fun codes(result: ModelImportResult): List<ModelImportProblemCode> {
@@ -101,6 +115,27 @@ class ModelImportTest {
             fixture.store.modelFileExists(imported.modelFile),
         )
         assertTrue(fixture.repository.list().single() is StoredProfile.Usable)
+    }
+
+    @Test
+    fun classificationModel_isImportedWithInputSizeFromTensor() {
+        // ResNet18 tujuh kelas (D-10): keluaran `[batch, 7]`, masukan 224×224.
+        val fixture = Fixture()
+        fixture.inspector.acceptsClassification(sevenClasses)
+
+        val result = fixture.import.import(
+            "content://resnet.onnx",
+            FakeReader("resnet18_model-7kelas.onnx", onnxBytes),
+        )
+
+        assertTrue("model klasifikasi harus diterima: $result", result is ModelImportResult.Imported)
+        val imported = (result as ModelImportResult.Imported).profile
+        assertEquals("resnet18_model-7kelas", imported.name)
+        assertEquals("", imported.version)
+        assertEquals(OutputFormat.CLASSIFICATION_ONLY, imported.output.format)
+        assertEquals(224, imported.input.width)
+        assertEquals(224, imported.input.height)
+        assertEquals(7, imported.labels.size)
     }
 
     @Test
@@ -243,6 +278,9 @@ class ModelImportTest {
         assertTrue("impor kedua tidak boleh menimpa profil lama", first.profile.profileId != second.profile.profileId)
         assertEquals(2, fixture.repository.list().size)
         assertEquals(2, fixture.store.listModelFiles().size)
+        // Nama tampil juga dibedakan supaya kedua kartu tidak tampak identik.
+        assertEquals("sampah", first.profile.name)
+        assertEquals("sampah (2)", second.profile.name)
     }
 
     @Test

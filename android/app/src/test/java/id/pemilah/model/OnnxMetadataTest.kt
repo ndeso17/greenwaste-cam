@@ -44,6 +44,24 @@ class OnnxMetadataTest {
     }
 
     @Test
+    fun parseClassNames_pythonReprWithSingleQuotes_returnsOrderedLabels() {
+        // Ultralytics menulis metadata `names` memakai `repr` Python.
+        val labels = OnnxMetadata.parseClassNames(
+            "{0: 'Organik', 1: 'Plastik', 2: 'Kaleng', 3: 'Styrofoam', 4: 'Kaca', 5: 'Kardus', 6: 'Besi'}",
+        )
+
+        assertEquals(
+            listOf("Organik", "Plastik", "Kaleng", "Styrofoam", "Kaca", "Kardus", "Besi"),
+            labels,
+        )
+    }
+
+    @Test
+    fun parseClassNames_pythonReprWithDuplicateKeys_returnsNull() {
+        assertNull(OnnxMetadata.parseClassNames("{0: 'Organik', 0: 'Plastik'}"))
+    }
+
+    @Test
     fun parseClassNames_missingOrBroken_returnsNull() {
         assertNull(OnnxMetadata.parseClassNames(null))
         assertNull(OnnxMetadata.parseClassNames("   "))
@@ -105,8 +123,20 @@ class OnnxMetadataTest {
     fun outputSpecOf_shapeNotMatchingLabelCount_returnsNull() {
         // 99 kanal tidak sama dengan 4 + 3 label maupun 5 + 3 label.
         assertNull(OnnxMetadata.outputSpecOf(listOf(1L, 99L, 8400L), classCount = 3))
+        // Dua dimensi dengan jumlah kelas yang tidak cocok juga ditolak.
         assertNull(OnnxMetadata.outputSpecOf(listOf(1L, 8400L), classCount = 3))
         assertNull(OnnxMetadata.outputSpecOf(null, classCount = 3))
+    }
+
+    @Test
+    fun outputSpecOf_classificationShape_isClassificationOnly() {
+        // ResNet18 pengguna: `logits` [batch_size, 7] (D-10).
+        val spec = OnnxMetadata.outputSpecOf(listOf(-1L, 7L), classCount = 7)
+
+        assertEquals(
+            OutputSpec(OutputFormat.CLASSIFICATION_ONLY, boxesNormalized = false, hasObjectness = false),
+            spec,
+        )
     }
 
     @Test

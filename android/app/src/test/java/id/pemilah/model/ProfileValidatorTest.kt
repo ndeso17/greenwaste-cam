@@ -101,9 +101,25 @@ class ProfileValidatorTest {
     }
 
     @Test
-    fun validate_classificationOnlyOutput_isRejected() {
+    fun validate_classificationOnlyOutput_isAccepted() {
+        // D-10: ResNet18 klasifikasi tujuh kelas adalah model utama prototipe.
+        // Kotak objeknya berasal dari pemasok deteksi yang belum ada, sehingga
+        // kelangkaan itu dicatat sebagai hambatan, bukan ditolak di validator.
         val output = OutputSpec(
             format = OutputFormat.CLASSIFICATION_ONLY,
+            boxesNormalized = false,
+            hasObjectness = false,
+        )
+
+        val validation = ProfileValidator.validate(ProfileFixture.profile(output = output))
+
+        assertEquals(ProfileValidation.Valid, validation)
+    }
+
+    @Test
+    fun validate_ssdOutputWithoutNormalizedBoxes_isRejected() {
+        val output = OutputSpec(
+            format = OutputFormat.SSD_BOXES,
             boxesNormalized = false,
             hasObjectness = false,
         )
@@ -112,7 +128,7 @@ class ProfileValidatorTest {
             ProfileValidator.validate(ProfileFixture.profile(output = output)),
         )
 
-        assertTrue(ProfileProblemReason.NO_LOCATION_OUTPUT in reasons)
+        assertEquals(listOf(ProfileProblemReason.NO_LOCATION_OUTPUT), reasons)
     }
 
     @Test
