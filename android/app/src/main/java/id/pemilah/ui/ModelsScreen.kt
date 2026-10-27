@@ -20,6 +20,8 @@ import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -27,6 +29,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -59,6 +63,9 @@ fun ModelsScreen(
     onProfileFilePicked: (String) -> Unit,
     modifier: Modifier = Modifier,
     importProblems: List<ProfileImportProblem> = emptyList(),
+    onThresholdTextChange: (String, String) -> Unit = { _, _ -> },
+    onThresholdCommit: (String) -> Unit = {},
+    onGroupingToggle: (String, Boolean) -> Unit = { _, _ -> },
 ) {
     val picker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
@@ -92,7 +99,12 @@ fun ModelsScreen(
             )
 
             state.isEmpty -> EmptyModelsState()
-            else -> ProfilesList(state)
+            else -> ProfilesList(
+                state = state,
+                onThresholdTextChange = onThresholdTextChange,
+                onThresholdCommit = onThresholdCommit,
+                onGroupingToggle = onGroupingToggle,
+            )
         }
     }
 }
@@ -141,7 +153,12 @@ private fun EmptyModelsState() {
 }
 
 @Composable
-private fun ProfilesList(state: ModelsUiState) {
+private fun ProfilesList(
+    state: ModelsUiState,
+    onThresholdTextChange: (String, String) -> Unit,
+    onThresholdCommit: (String) -> Unit,
+    onGroupingToggle: (String, Boolean) -> Unit,
+) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         state.activeAbsentReason?.let { reason ->
             Text(
@@ -152,14 +169,26 @@ private fun ProfilesList(state: ModelsUiState) {
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(state.rows, key = { row -> row.fileName }) { row ->
-                ProfileRow(row)
+                ProfileRow(
+                    state = state,
+                    row = row,
+                    onThresholdTextChange = onThresholdTextChange,
+                    onThresholdCommit = onThresholdCommit,
+                    onGroupingToggle = onGroupingToggle,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun ProfileRow(row: ModelsProfileRow) {
+private fun ProfileRow(
+    state: ModelsUiState,
+    row: ModelsProfileRow,
+    onThresholdTextChange: (String, String) -> Unit,
+    onThresholdCommit: (String) -> Unit,
+    onGroupingToggle: (String, Boolean) -> Unit,
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -221,6 +250,88 @@ private fun ProfileRow(row: ModelsProfileRow) {
                 row.problems.forEach { problem -> ProblemLine(problem) }
             }
         }
+        ThresholdEditor(
+            state = state,
+            row = row,
+            onThresholdTextChange = onThresholdTextChange,
+            onThresholdCommit = onThresholdCommit,
+        )
+        GroupingToggle(row = row, onGroupingToggle = onGroupingToggle)
+    }
+}
+
+/**
+ * Penyunting ambang keyakinan (MOD-04). Nilai awal berasal dari profil tersimpan
+ * lewat [ModelsUiState.thresholdTextOf]; bentuk persen ditampilkan bersama nilai
+ * pecahan tanpa membulatkan diam-diam. Alasan penolakan tampil pada field ini,
+ * bukan sebagai pesan umum.
+ */
+@Composable
+private fun ThresholdEditor(
+    state: ModelsUiState,
+    row: ModelsProfileRow,
+    onThresholdTextChange: (String, String) -> Unit,
+    onThresholdCommit: (String) -> Unit,
+) {
+    val text = state.thresholdTextOf(row.profileId).orEmpty()
+    val percent = ModelsNumbers.parseFraction(text)?.let { ModelsNumbers.toPercentText(it) }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = stringResource(R.string.models_threshold_label),
+            color = Palette.onSurface,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.SemiBold,
+        )
+        OutlinedTextField(
+            value = text,
+            onValueChange = { value -> onThresholdTextChange(row.profileId, value) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            modifier = Modifier.fillMaxWidth(),
+        )
+        Text(
+            text = percent?.let { stringResource(R.string.models_threshold_percent, it) }
+                ?: stringResource(R.string.models_threshold_hint),
+            color = Palette.onSurfaceMuted,
+            fontSize = 12.sp,
+        )
+        state.thresholdProblems[row.profileId]?.forEach { problem -> ProblemLine(problem) }
+        Button(onClick = { onThresholdCommit(row.profileId) }) {
+            Text(text = stringResource(R.string.models_threshold_apply))
+        }
+    }
+}
+
+/**
+ * Sakelar aturan kelompok (MOD-06). Nilainya tersimpan per profil, tetapi
+ * keterangan menyatakan bahwa perilaku pengelompokan belum ditetapkan (B-07),
+ * sehingga sakelar tidak mengklaim perilaku yang belum ada.
+ */
+@Composable
+private fun GroupingToggle(row: ModelsProfileRow, onGroupingToggle: (String, Boolean) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = stringResource(R.string.models_grouping_label),
+                color = Palette.onSurface,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+            Text(
+                text = stringResource(R.string.models_grouping_note),
+                color = Palette.onSurfaceMuted,
+                fontSize = 12.sp,
+            )
+        }
+        Switch(
+            checked = row.groupingEnabled == true,
+            enabled = row.groupingEnabled != null,
+            onCheckedChange = { enabled -> onGroupingToggle(row.profileId, enabled) },
+        )
     }
 }
 

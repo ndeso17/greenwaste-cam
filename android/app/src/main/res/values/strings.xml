@@ -153,6 +153,12 @@
     <string name="models_reason_unknown_normalization">normalisasi masukan tidak dikenali</string>
     <string name="models_reason_class_not_in_profile">kelas ini tidak dipetakan oleh profil</string>
     <string name="models_reason_invalid_bin_name">nama bak kosong bukan berarti belum ditetapkan</string>
+    <string name="models_threshold_label">Ambang keyakinan</string>
+    <string name="models_threshold_percent">Setara %1$s</string>
+    <string name="models_threshold_hint">Masukkan pecahan 0–1 atau ketik persen; nilai tersimpan tetap pecahan.</string>
+    <string name="models_threshold_apply">Terapkan ambang</string>
+    <string name="models_grouping_label">Aturan kelompok</string>
+    <string name="models_grouping_note">Sakelar ini hanya menyimpan pilihan. Perilaku pengelompokan belum ditetapkan (B-07).</string>
     <string name="models_action_import">Impor profil</string>
     <string name="models_import_unreadable">Berkas profil tidak dapat dibaca. Pilih berkas lain.</string>
     <string name="models_import_empty">Berkas profil kosong.</string>

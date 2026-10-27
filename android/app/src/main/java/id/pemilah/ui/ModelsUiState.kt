@@ -22,9 +22,38 @@ data class ModelsUiState(
     val rows: List<ModelsProfileRow> = emptyList(),
     val activeProfileId: String? = null,
     val activeAbsentReason: ActiveProfileAbsentReason? = null,
+    /**
+     * Draf teks ambang keyakinan per `profileId`. Nilai awal diambil dari profil
+     * tersimpan, bukan angka bawaan aplikasi; selama draf ada, teks operator yang
+     * ditampilkan (MOD-04).
+     */
+    val thresholdDrafts: Map<String, String> = emptyMap(),
+    /** Alasan penolakan per `profileId` yang ditampilkan pada field ambang. */
+    val thresholdProblems: Map<String, List<ModelsProblemUi>> = emptyMap(),
 ) {
     /** Belum ada profil tersimpan dan tidak sedang memuat. */
     val isEmpty: Boolean get() = !loading && rows.isEmpty()
+
+    /** Teks ambang yang ditampilkan: draf operator bila ada, jika tidak nilai tersimpan. */
+    fun thresholdTextOf(profileId: String): String? =
+        thresholdDrafts[profileId] ?: rows.firstOrNull { it.profileId == profileId }?.thresholdText
+
+    /**
+     * Simpan draf teks ambang operator. Draf tidak mengubah profil tersimpan
+     * sampai aksi terapkan dijalankan (MOD-04).
+     */
+    fun withThresholdDraft(profileId: String, text: String): ModelsUiState =
+        copy(thresholdDrafts = thresholdDrafts + (profileId to text))
+
+    /** Pasang alasan penolakan ambang pada satu profil, atau bersihkan bila kosong. */
+    fun withThresholdProblems(profileId: String, problems: List<ModelsProblemUi>): ModelsUiState =
+        copy(
+            thresholdProblems = if (problems.isEmpty()) {
+                thresholdProblems - profileId
+            } else {
+                thresholdProblems + (profileId to problems)
+            },
+        )
 
     companion object {
         /**
@@ -58,6 +87,8 @@ data class ModelsUiState(
                 problems = emptyList(),
                 labels = labelsOf(stored.profile),
                 isActive = stored.profile.profileId == activeId,
+                thresholdText = ModelsNumbers.fractionToText(stored.profile.confidenceThreshold),
+                groupingEnabled = stored.profile.groupingEnabled,
             )
 
             is StoredProfile.Broken -> ModelsProfileRow(
@@ -74,6 +105,9 @@ data class ModelsUiState(
                     stored.validationProblems.map { it.toUi() },
                 labels = stored.profile?.let { labelsOf(it) } ?: emptyList(),
                 isActive = stored.profileId == activeId,
+                thresholdText = stored.profile?.confidenceThreshold
+                    ?.let { ModelsNumbers.fractionToText(it) },
+                groupingEnabled = stored.profile?.groupingEnabled,
             )
         }
 
@@ -99,6 +133,10 @@ data class ModelsProfileRow(
     val problems: List<ModelsProblemUi>,
     val labels: List<ModelsLabelUi>,
     val isActive: Boolean,
+    /** Ambang tersimpan sebagai teks; titik desimal, tanpa pembulatan. */
+    val thresholdText: String?,
+    /** Sakelar kelompok tersimpan; `null` bila profil tidak terbaca (MOD-06). */
+    val groupingEnabled: Boolean?,
 )
 
 /** Status validasi satu profil; ditampilkan sebagai teks + ikon, bukan warna saja. */
@@ -183,3 +221,26 @@ internal fun ProfileProblem.toUi(): ModelsProblemUi = ModelsProblemUi(
         ProfileProblemReason.INVALID_BIN_NAME -> ModelsProblemCode.INVALID_BIN_NAME
     },
 )
+
+/**
+ * Angka tampilan untuk layar Models (MOD-04).
+ *
+ * Nilai ambang ditampilkan apa adanya: teks operator tidak dibulatkan diam-diam,
+ * dan bentuk persen dihitung dari nilai tersimpan tanpa mengubah nilainya.
+ * Pemisah desimal koma diterima karena operator Indonesia mengetik "0,45".
+ */
+internal object ModelsNumbers {
+
+    /** Teks Pecahan titik-desimal dari nilai tersimpan, tanpa pembulatan. */
+    fun fractionToText(value: Double): String = java.math.BigDecimal.valueOf(value)
+        .stripTrailingZeros()
+        .toPlainString()
+
+    /** Bentuk persen dari nilai tersimpan, misalnya `0.455` → `45.5%`. */
+    fun toPercentText(value: Double): String =
+        java.math.BigDecimal.valueOf(value).movePointRight(2).stripTrailingZeros().toPlainString() + "%"
+
+    /** Baca teks operator menjadi pecahan; `null` bila bukan bilangan. */
+    fun parseFraction(text: String): Double? =
+        text.trim().replace(',', '.').takeIf { it.isNotEmpty() }?.toDoubleOrNull()
+}
