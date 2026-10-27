@@ -14,7 +14,8 @@ berada di luar repo ini.
 - Peta implementasi per requirement: [`.work/PRD-Breakdown.md`](.work/PRD-Breakdown.md)
 - Kontrak kerja agen dan aturan commit: [`AGENTS.md`](AGENTS.md)
 
-Catatan rilis dan rencana berikutnya: [Changelog](CHANGELOG.md).
+Catatan rilis dan checklist implementasi: [Changelog](CHANGELOG.md).
+Rilis uji coba terbaru: [v0.1.1](https://github.com/ndeso17/greenwaste-cam/releases/tag/v0.1.1).
 
 ## Status saat ini
 
@@ -26,7 +27,7 @@ Integrasi pemilahan/controller serta evaluasi akurasi lapangan belum selesai.
 | Layar operasi portrait/landscape (kamera penuh, shutter overlay, status titik, ringkasan adaptif, panel kanan tersembunyi secara default) | Ada dan berjalan di perangkat |
 | Rail navigasi berikon + dapat diperkecil (232 dp ⇄ 72 dp) | Ada, diuji unit test dan diukur di perangkat |
 | Pratinjau kamera (CameraX) | Berjalan |
-| Deteksi lokasi + klasifikasi ONNX | YOLO lama memasok kotak, ResNet18 aktif mengklasifikasi crop; filter area mesin masih menunggu geometri |
+| Deteksi lokasi + klasifikasi ONNX | YOLOv10n COCO memasok kotak, ResNet18 aktif mengklasifikasi crop; filter area mesin masih menunggu geometri |
 | Pelacakan objek, pemetaan kelas→bak, guard start, invalidasi kalibrasi, antrean telemetri, transport USB | Logika ada + unit test; sambungan ke deteksi/controller belum |
 | Models | Impor ONNX, pilih/hapus model dan ambang profil tersedia |
 | Uji Model dan Galeri | Uji kamera, simpan gambar, koreksi kelas per objek dan referensi lokal |
@@ -47,7 +48,7 @@ SC): [`.work/PRD-Breakdown.md`](.work/PRD-Breakdown.md) §12.
 | Bahasa | Kotlin 2.0.21 |
 | UI | Jetpack Compose + Material3 (BOM 2024.10.01) |
 | Kamera | CameraX 1.4.0 |
-| Inferensi | ONNX Runtime Android 1.19.2 (dependensi sudah ada, belum dipakai) |
+| Inferensi | ONNX Runtime Android 1.19.2 (deteksi lokasi dan klasifikasi lokal) |
 | USB | usb-serial-for-android 3.8.1 (CDC-ACM ke ESP32-S3) |
 | Penyimpanan | Berkas JSON via `ConfigStore` |
 | Build | Gradle 8.11.1 (wrapper) + AGP 8.7.3, Kotlin DSL |
