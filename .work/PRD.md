@@ -237,3 +237,29 @@ dicatat sebagai `D-UI-02` dan `D-05`.
 Firmware controller, server backend, dashboard web, pelatihan model (dicatat
 sebagai pekerjaan retraining di `Controller/` tidak; lihat `Backend/` juga tidak;
 retraining berada di luar keempat repo sampai diputuskan pemiliknya).
+
+## 11. Tambahan Uji Model dan Galeri — 27 Oktober 2026
+
+Sumber: instruksi pengguna sesi ini, termasuk “mulai implementasikan”.
+Alias U-01–U-06 lokal terhadap rencana
+`../.work/Plan_UjiModelGaleri_27102026-153413.md`; bukan pengganti ID induk.
+Bagian ini menambah dua tujuan pada enam menu §6.6. Status: kebutuhan
+disetujui; implementasi dan pembuktian perangkat belum dilakukan.
+
+| Alias | Kebutuhan dan kriteria terima |
+|---|---|
+| U-01 | Uji Model mengikuti susunan visual Operasi terbaru pada Design.md; kontrol Mulai Uji dan Stop Uji mengendalikan satu sesi uji, tanpa perintah aktuator. Saat berhenti, inferensi dan penyimpanan sampel baru berhenti. |
+| U-02 | Galeri menampilkan gambar tersimpan beserta seluruh objek; memilih objek lalu mengubah kelas hanya mengubah anotasi objek itu, bukan objek lain. Koreksi dan penghapusan bertahan setelah aplikasi dibuka ulang. |
+| U-03 | Kamera dapat diarahkan ke latar bebas dan mendeteksi beberapa objek per frame; tidak bergantung pada latar conveyor tetap. Hasil kosong tetap ditampilkan sebagai tidak ada objek, bukan diisi prediksi petak. |
+| U-04 | Setiap objek memiliki kotak persegi panjang sesuai posisi/ukuran hasil detektor, label kelas, keyakinan dan warna tetap per kelas. Kotak objek terpisah dari garis bantu; kontur/segmentasi dikeluarkan dari lingkup atas instruksi pengguna. |
+| U-05 | Selama uji, gambar sumber disimpan bersama prediksi per objek dari frame yang sama. Gambar harus dapat dibuka untuk koreksi; hasil otomatis berstatus belum diperiksa. Kegagalan simpan dilaporkan, bukan ditandai tersimpan. |
+| U-06 | Koreksi terkonfirmasi menjadi masukan untuk pemantauan sejak sesi berikut dimulai tanpa retraining bobot ONNX. Mekanisme penerapan menunggu B-UM-02; anotasi sendiri tidak mengubah kemampuan model dasar. |
+
+Data disimpan lokal sesuai §7; tidak ada akun atau unggah gambar. Pengujian
+scan latar bebas berbeda dari pemilahan mesin: guard pemilahan dan kebutuhan
+kalibrasi tetap berlaku (PRD induk §7/§11; D-11).
+
+D-14 mencatat perilaku petak lama, bukan kriteria hasil baru. Model ResNet18
+aktif tidak menyediakan lokasi. Pemilihan pemasok lokasi multiobjek menunggu
+B-UM-01; model lama CV/best.onnx tidak otomatis disahkan sebagai model tujuh
+kelas. Tidak ada janji akurasi meningkat sebelum evaluasi data terpisah.

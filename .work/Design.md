@@ -527,3 +527,56 @@ kalibrasi, dan kotak bukan batas objek.
 Bukti perangkat: `.work/evidence/kamera-klasifikasi.md` beserta tangkap layar
 `klasifikasi-kotak-overlay-27102026.png` dan
 `klasifikasi-panel-kotak-27102026.png`.
+
+## Uji Model dan Galeri — tambahan 27 Oktober 2026
+
+Dasar: PRD.md §11 (U-01–U-06), instruksi pengguna sesi ini. Status:
+spesifikasi layar; belum merupakan bukti layar telah diimplementasikan.
+
+### Uji Model
+
+Tujuan navigasi baru “Uji Model”. Gunakan susunan Operasi versi terbaru:
+preview memenuhi konten, rail adaptif, panel kanan lipat, insets sistem,
+kontrol bawah dalam preview dan dukungan portrait/landscape. Ganti aksi
+pemantauan menjadi “Mulai Uji” dan “Stop Uji”; label aksesibilitas mengikuti
+teks terlihat. Menekan Mulai dua kali tidak membuat dua sesi. Stop tetap
+terjangkau saat panel disembunyikan dan tidak mengirim perintah mesin.
+
+Kotak persegi panjang mengikuti lokasi objek dari detektor, dengan warna
+tetap per kelas. Warna bukan satu-satunya pembeda: tiap objek menampilkan
+label dan keyakinan. Beberapa objek pada gambar masing-masing memiliki
+kotak/label sendiri. Tidak ada kontur dan batas petak tidak dipresentasikan
+sebagai batas objek. Transformasi kotak harus sama dengan preview pada
+rotasi dan rasio aspek yang berbeda (CAM-02).
+
+| Keadaan | Tampilan dan perilaku |
+|---|---|
+| Belum siap | Alasan kamera/profil belum siap; Mulai Uji nonaktif. |
+| Detektor belum tersedia | Alasan spesifik, kotak tidak dikarang; tidak menyamarkan klasifikasi petak sebagai deteksi. |
+| Siap | Mulai Uji tersedia; Stop Uji nonaktif. |
+| Berjalan | Status uji aktif, Stop Uji aktif; simpan gambar dan prediksi per objek yang terkait frame yang sama. |
+| Tidak ada objek | Preview tetap aktif, tanpa kotak palsu. |
+| Gagal simpan | Penyebab terlihat; jangan menambah jumlah tersimpan untuk sampel gagal. |
+| Dihentikan | Tidak ada inferensi atau penyimpanan baru; hasil yang sedang diproses tidak diterbitkan sebagai sampel baru setelah Stop. |
+
+### Galeri
+
+Tujuan navigasi baru “Galeri”. Daftar gambar membuka detail dengan overlay
+objek bernomor/beridentitas; memilih satu objek menunjukkan prediksi asli,
+keyakinan, kelas koreksi dan status pemeriksaan. Operator memilih kelas
+resmi untuk objek itu, lalu menyimpan koreksi. Koreksi tidak mengganti
+prediksi asli. Menyimpan satu objek tidak mengonfirmasi objek lainnya.
+
+| Keadaan | Tampilan dan perilaku |
+|---|---|
+| Kosong | Belum ada gambar; arahkan operator ke Uji Model. |
+| Memuat | Indikator memuat tanpa thumbnail contoh. |
+| Belum diperiksa | Penanda teks pada objek; tidak dianggap label kebenaran. |
+| Dikonfirmasi | Label koreksi tersimpan terpisah dari prediksi awal. |
+| Gagal baca/simpan | Alasan tampil; pertahankan draft koreksi jika penyimpanan gagal. |
+| Hapus | Konfirmasi menyebut gambar dan anotasi yang ikut dihapus; pembatalan tidak mengubah data. |
+
+Seluruh teks UI kelak berasal dari strings.xml (D-03). Terapkan target
+sentuh dan label aksesibilitas §7, termasuk pemilihan objek selain melalui
+kanvas. Referensi koreksi U-06 belum boleh ditampilkan sebagai “model sudah
+dilatih”; mekanismenya masih B-UM-02.

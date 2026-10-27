@@ -225,3 +225,46 @@ Aturan:
 
 Bentuk keluaran model (B-02), nilai numerik konfigurasi mesin (B-03), format
 pesan serial (B-04), dan definisi operasional kelas (B-15).
+
+## 11. Kontrak data sampel Uji Model dan anotasi Galeri
+
+Sumber: PRD.md §11 U-02/U-05/U-06; instruksi pengguna 27 Oktober 2026.
+Status: kontrak data produk untuk WP-01; format serialisasi, lokasi file,
+representasi fitur, retensi dan mekanisme pencocokan bukan keputusan final
+di bagian ini. Detail teknis ditetapkan WP-02 sesuai kewenangan arsitektur.
+
+### Sampel gambar
+
+| Data wajib | Makna / aturan |
+|---|---|
+| Versi skema | Eksplisit; versi tidak dikenal dilaporkan. |
+| Identitas sampel dan sesi uji | Membedakan gambar dan sesi tanpa bergantung nama label. |
+| Identitas gambar sumber | Merujuk gambar yang benar-benar tersimpan dan dapat dibaca. |
+| Waktu pengambilan | Waktu frame, berbeda dari waktu selesai analisis/simpan. |
+| Ukuran dan orientasi gambar tersimpan | Menentukan koordinat anotasi; tidak menganggap frame dan preview identik. |
+| Identitas/versi profil klasifikasi dan detektor | Asal hasil dapat ditelusuri; koreksi profil berbeda tidak otomatis dicampur. |
+| Daftar objek | Semua objek pada sampel memiliki identitas sendiri; bukan satu label untuk seluruh gambar. |
+
+### Anotasi per objek
+
+| Data wajib | Makna / aturan |
+|---|---|
+| Identitas objek dalam sampel | Stabil saat pengguna mengedit kelas; tidak mengandalkan urutan daftar. |
+| Kotak persegi panjang | Mengacu ke gambar sumber tersimpan; area positif, berada dalam batas gambar. Konvensi angka/normalisasi ditetapkan WP-02. |
+| Prediksi kelas asli dan keyakinan | Hasil awal model, tidak ditimpa koreksi pengguna. |
+| Kelas koreksi | Salah satu tujuh kelas resmi §2; belum diisi saat otomatis tersimpan. |
+| Status pemeriksaan | Belum diperiksa atau dikonfirmasi; prediksi otomatis bukan konfirmasi. |
+| Waktu koreksi | Diisi setelah koreksi berhasil disimpan. |
+
+Koreksi satu objek tidak mengubah objek lainnya. Mengonfirmasi kelas yang
+sama dengan prediksi tetap memerlukan tindakan pengguna. Status dikonfirmasi
+memerlukan kelas koreksi yang valid. Gagal simpan tidak boleh mengubah
+status menjadi berhasil; gambar dan anotasi tidak boleh tertukar antar frame.
+Penghapusan sampel menghapus gambar, anotasi dan pengaruh referensinya pada
+sesi berikut, bila U-06 sudah diimplementasikan.
+
+Data referensi U-06 harus dapat ditelusuri ke anotasi terkonfirmasi dan
+profil asal. Tidak ada field yang menyatakan bobot ONNX telah terlatih
+sebagai akibat menyimpan anotasi. Bentuk referensi dan aturan aktivasi
+menunggu B-UM-02; inferensi tidak boleh menganggap semua sampel sebagai
+label kebenaran. Kontur/mask segmentasi tidak termasuk kontrak ini.
