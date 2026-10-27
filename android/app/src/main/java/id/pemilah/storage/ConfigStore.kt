@@ -130,6 +130,11 @@ class ConfigStore(private val storage: ConfigStorage) {
     fun modelFileExists(name: String): Boolean =
         runCatching { storage.exists(name) }.getOrDefault(false)
 
+    /** Nama berkas model yang sudah lengkap, urut menaik (D-09, MOD-01). */
+    fun listModelFiles(): List<String> = runCatching { storage.listNames(MODEL_PREFIX) }
+        .getOrDefault(emptyList())
+        .filter { it.endsWith(MODEL_EXTENSION) }
+
     /**
      * `profileId` profil aktif; `null` berarti belum pernah dipilih (MOD-03).
      *

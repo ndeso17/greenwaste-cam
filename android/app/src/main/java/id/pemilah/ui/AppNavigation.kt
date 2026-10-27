@@ -47,12 +47,13 @@ import id.pemilah.Palette
 import id.pemilah.PemilahColors
 import id.pemilah.R
 import id.pemilah.domain.operation.MachineState
-import id.pemilah.model.ProfileImport
-import id.pemilah.model.ProfileImportProblem
+import id.pemilah.model.ModelImport
+import id.pemilah.model.ModelImportProblem
 import id.pemilah.model.ProfileRepository
 import id.pemilah.model.ProfileSwitchBlock
+import id.pemilah.onnx.OrtOnnxModelInspector
 import id.pemilah.storage.ConfigStore
-import id.pemilah.storage.ContentProfileReader
+import id.pemilah.storage.ContentModelReader
 import id.pemilah.storage.FileConfigStorage
 
 /**
@@ -81,11 +82,12 @@ fun AppNavigation(
     // membaca profil aktif dari sumber yang sama (Architecture.md §4).
     val modelsSession = remember(context) {
         val repository = ProfileRepository(ConfigStore(FileConfigStorage(context.applicationContext)))
-        ModelsSession(repository, ProfileImport(repository))
+        // Inspeksi model memakai ONNX Runtime pada lapisan platform (D-09).
+        ModelsSession(repository, ModelImport(repository, OrtOnnxModelInspector()))
     }
-    val profileFileReader = remember(context) { ContentProfileReader(context.applicationContext) }
+    val modelFileReader = remember(context) { ContentModelReader(context.applicationContext) }
     var modelsState by remember(modelsSession) { mutableStateOf(modelsSession.load()) }
-    var importProblems by remember { mutableStateOf(emptyList<ProfileImportProblem>()) }
+    var importProblems by remember { mutableStateOf(emptyList<ModelImportProblem>()) }
     var switchBlocks by remember { mutableStateOf(emptyList<ProfileSwitchBlock>()) }
 
     fun applyOutcome(outcome: ModelsSessionOutcome) {
@@ -117,8 +119,8 @@ fun AppNavigation(
                 importProblems = importProblems,
                 switchBlocks = switchBlocks,
                 profileLabel = modelsSession.operationProfileLabel(modelsState),
-                onProfileFilePicked = { uri ->
-                    applyOutcome(modelsSession.importProfile(uri, profileFileReader))
+                onModelFilePicked = { uri ->
+                    applyOutcome(modelsSession.importModel(uri, modelFileReader))
                 },
                 onThresholdTextChange = { profileId, text ->
                     modelsState = modelsSession.draftThreshold(profileId, text)
@@ -127,9 +129,6 @@ fun AppNavigation(
                     applyOutcome(
                         modelsSession.commitThreshold(profileId, modelsState.thresholdTextOf(profileId).orEmpty()),
                     )
-                },
-                onGroupingToggle = { profileId, enabled ->
-                    applyOutcome(modelsSession.toggleGrouping(profileId, enabled))
                 },
                 onActivateProfile = { profileId ->
                     // Pemilik state operasi belum membagikan status berjalan pada
@@ -299,13 +298,12 @@ private fun NavigationRailItem(
 private fun DestinationContent(
     destination: AppDestination,
     modelsState: ModelsUiState,
-    importProblems: List<ProfileImportProblem>,
+    importProblems: List<ModelImportProblem>,
     switchBlocks: List<ProfileSwitchBlock>,
     profileLabel: String?,
-    onProfileFilePicked: (String) -> Unit,
+    onModelFilePicked: (String) -> Unit,
     onThresholdTextChange: (String, String) -> Unit,
     onThresholdCommit: (String) -> Unit,
-    onGroupingToggle: (String, Boolean) -> Unit,
     onActivateProfile: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -322,12 +320,11 @@ private fun DestinationContent(
     if (destination == AppDestination.MODELS) {
         ModelsScreen(
             state = modelsState,
-            onProfileFilePicked = onProfileFilePicked,
+            onModelFilePicked = onModelFilePicked,
             modifier = modifier,
             importProblems = importProblems,
             onThresholdTextChange = onThresholdTextChange,
             onThresholdCommit = onThresholdCommit,
-            onGroupingToggle = onGroupingToggle,
             onActivateProfile = onActivateProfile,
             switchBlocks = switchBlocks,
         )

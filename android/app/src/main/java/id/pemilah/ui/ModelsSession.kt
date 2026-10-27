@@ -2,11 +2,11 @@ package id.pemilah.ui
 
 import id.pemilah.domain.operation.MachineState
 import id.pemilah.model.ActiveProfileState
+import id.pemilah.model.ModelFileReader
+import id.pemilah.model.ModelImport
+import id.pemilah.model.ModelImportProblem
+import id.pemilah.model.ModelImportResult
 import id.pemilah.model.ProfileEditResult
-import id.pemilah.model.ProfileFileReader
-import id.pemilah.model.ProfileImport
-import id.pemilah.model.ProfileImportProblem
-import id.pemilah.model.ProfileImportResult
 import id.pemilah.model.ProfileProblem
 import id.pemilah.model.ProfileRepository
 import id.pemilah.model.ProfileSettings
@@ -18,7 +18,7 @@ import id.pemilah.model.StoredProfile
 
 /**
  * Pemilik tunggal state layar Models sekaligus penyambung ke layar Operasi
- * (`Architecture.md` §4, MOD-03, NFR-03).
+ * (`Architecture.md` §4, MOD-01, MOD-03, NFR-03).
  *
  * Aturan yang dijaga:
  * - Satu sumber kebenaran: seluruh state dibaca dari [ProfileRepository]; kelas
@@ -26,28 +26,30 @@ import id.pemilah.model.StoredProfile
  *   layar Operasi tidak dapat menampilkan nilai berbeda.
  * - Setiap aksi mengembalikan [ModelsSessionOutcome] berisi state terbaru dan
  *   pesan bertipe. Tidak ada pengecualian yang lolos ke Composable.
+ * - Impor menerima berkas model ONNX; tidak ada jalur impor JSON konfigurasi
+ *   lagi (D-09).
  * - Aktivasi profil selalu melewati [ProfileSwitchGuard]; saat ditolak, penanda
  *   profil aktif tidak diubah dan alasannya dikembalikan.
  * - Repositori disimpan sehingga profil aktif bertahan setelah aplikasi ditutup.
  */
 class ModelsSession(
     private val repository: ProfileRepository,
-    private val importer: ProfileImport,
+    private val importer: ModelImport,
 ) {
 
     /** Muat state dari penyimpanan; `loading` dipakai saat pemuatan awal. */
     fun load(loading: Boolean = false): ModelsUiState =
         ModelsUiState.from(repository.list(), repository.active(), loading)
 
-    /** Impor berkas profil terpilih; kegagalan tidak mengubah daftar profil. */
-    fun importProfile(uri: String, reader: ProfileFileReader): ModelsSessionOutcome =
+    /** Impor berkas model terpilih; kegagalan tidak mengubah daftar profil. */
+    fun importModel(uri: String, reader: ModelFileReader): ModelsSessionOutcome =
         when (val result = importer.import(uri, reader)) {
-            is ProfileImportResult.Imported -> ModelsSessionOutcome(
+            is ModelImportResult.Imported -> ModelsSessionOutcome(
                 state = load(),
                 messages = listOf(ModelsSessionMessage.Imported(result.profile.name)),
             )
 
-            is ProfileImportResult.Rejected -> ModelsSessionOutcome(
+            is ModelImportResult.Rejected -> ModelsSessionOutcome(
                 state = load(),
                 messages = listOf(ModelsSessionMessage.ImportRejected(result.problems)),
             )
@@ -140,7 +142,14 @@ class ModelsSession(
         }
     }
 
-    /** Simpan sakelar kelompok per profil (MOD-06). Perilaku kelompok menunggu B-07. */
+    /**
+     * Simpan sakelar kelompok per profil (MOD-06).
+     *
+     * Aksi ini belum memiliki kendali pada layar Models sesuai instruksi
+     * pengguna 27 Oktober 2026; perilaku pengelompokan sendiri menunggu B-07.
+     * Logika domainnya tetap tersedia dan diuji, dan celah UI-nya dicatat pada
+     * `.work/FINDINGS.md`.
+     */
     fun toggleGrouping(profileId: String, enabled: Boolean): ModelsSessionOutcome {
         val profile = (repository.find(profileId) as? StoredProfile.Usable)?.profile
             ?: return ModelsSessionOutcome(
@@ -175,7 +184,7 @@ class ModelsSession(
     fun operationProfileLabel(state: ModelsUiState = load()): String? =
         state.rows.firstOrNull { it.isActive }?.let { row ->
             val name = row.name ?: return@let null
-            row.version?.let { version -> "$name $version" } ?: name
+            row.version?.takeIf { it.isNotBlank() }?.let { version -> "$name $version" } ?: name
         }
 
     /** Profil aktif yang sah, atau `null`; dipakai layar lain tanpa menyimpan salinan. */
@@ -191,8 +200,7 @@ data class ModelsSessionOutcome(
 /** Hasil satu aksi pada layar Models. */
 sealed interface ModelsSessionMessage {
     data class Imported(val profileName: String) : ModelsSessionMessage
-    data class ImportRejected(val problems: List<ProfileImportProblem>) :
-        ModelsSessionMessage
+    data class ImportRejected(val problems: List<ModelImportProblem>) : ModelsSessionMessage
 
     data class Activated(val profileId: String) : ModelsSessionMessage
     data class SwitchRejected(val blocks: List<ProfileSwitchBlock>) : ModelsSessionMessage

@@ -88,7 +88,8 @@ data class ModelsUiState(
                 labels = labelsOf(stored.profile),
                 isActive = stored.profile.profileId == activeId,
                 thresholdText = ModelsNumbers.fractionToText(stored.profile.confidenceThreshold),
-                groupingEnabled = stored.profile.groupingEnabled,
+                thresholdSet = stored.profile.confidenceThreshold > 0.0,
+                classCount = stored.profile.labels.size,
             )
 
             is StoredProfile.Broken -> ModelsProfileRow(
@@ -107,17 +108,19 @@ data class ModelsUiState(
                 isActive = stored.profileId == activeId,
                 thresholdText = stored.profile?.confidenceThreshold
                     ?.let { ModelsNumbers.fractionToText(it) },
-                groupingEnabled = stored.profile?.groupingEnabled,
+                thresholdSet = (stored.profile?.confidenceThreshold ?: 0.0) > 0.0,
+                classCount = stored.profile?.labels?.size ?: 0,
             )
         }
 
+        /**
+         * Label model beserta kelas resmi hasil pencocokan nama (D-09, MOD-02).
+         *
+         * Tidak ada bak pada baris label: pemetaan kelas ke bak tidak lagi
+         * ditampilkan layar Models (celah UI dicatat di `.work/FINDINGS.md`).
+         */
         private fun labelsOf(profile: ModelProfile): List<ModelsLabelUi> = profile.labels.map { label ->
-            val wasteClass = profile.classMapping[label]
-            ModelsLabelUi(
-                label = label,
-                wasteClass = wasteClass,
-                bin = wasteClass?.let { profile.binAssignment[it] },
-            )
+            ModelsLabelUi(label = label, wasteClass = profile.classMapping[label])
         }
     }
 }
@@ -135,8 +138,10 @@ data class ModelsProfileRow(
     val isActive: Boolean,
     /** Ambang tersimpan sebagai teks; titik desimal, tanpa pembulatan. */
     val thresholdText: String?,
-    /** Sakelar kelompok tersimpan; `null` bila profil tidak terbaca (MOD-06). */
-    val groupingEnabled: Boolean?,
+    /** `false` berarti ambang belum ditetapkan (`0.0`) sehingga aktivasi diblokir (MOD-04). */
+    val thresholdSet: Boolean,
+    /** Jumlah kelas yang dibaca dari model (D-09, UI-02). */
+    val classCount: Int,
 )
 
 /** Status validasi satu profil; ditampilkan sebagai teks + ikon, bukan warna saja. */
@@ -172,6 +177,9 @@ enum class ModelsProblemCode {
     UNKNOWN_NORMALIZATION,
     CLASS_NOT_IN_PROFILE,
     INVALID_BIN_NAME,
+
+    /** Profil menunjuk berkas model yang tidak ada di penyimpanan aplikasi (D-09). */
+    MODEL_FILE_MISSING,
 }
 
 /** Satu alasan penolakan yang dapat ditampilkan pada baris profil. */
@@ -181,13 +189,15 @@ data class ModelsProblemUi(
     val detail: String? = null,
 )
 
-/** Satu label profil beserta kelas resmi dan bak tujuannya (MOD-02, Schema §3). */
+/**
+ * Satu label yang tertulis di dalam model beserta kelas resmi hasil pencocokan
+ * nama (D-09, MOD-02). Tidak ada bak di sini: layar Models tidak lagi
+ * menampilkan alokasi bak.
+ */
 data class ModelsLabelUi(
     val label: String,
-    /** `null` berarti label belum dipetakan ke salah satu kelas resmi. */
+    /** `null` berarti nama label model belum dipetakan ke salah satu kelas resmi. */
     val wasteClass: WasteClass?,
-    /** `null` berarti kelas belum ditetapkan ke bak (bukan nilai bawaan). */
-    val bin: String?,
 )
 
 internal fun ProfileJsonProblem.toUi(): ModelsProblemUi = ModelsProblemUi(
@@ -219,6 +229,7 @@ internal fun ProfileProblem.toUi(): ModelsProblemUi = ModelsProblemUi(
         ProfileProblemReason.UNKNOWN_NORMALIZATION -> ModelsProblemCode.UNKNOWN_NORMALIZATION
         ProfileProblemReason.CLASS_NOT_IN_PROFILE -> ModelsProblemCode.CLASS_NOT_IN_PROFILE
         ProfileProblemReason.INVALID_BIN_NAME -> ModelsProblemCode.INVALID_BIN_NAME
+        ProfileProblemReason.MODEL_FILE_MISSING -> ModelsProblemCode.MODEL_FILE_MISSING
     },
 )
 

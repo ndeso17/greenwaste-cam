@@ -69,4 +69,11 @@ enum class ProfileProblemReason {
 
     /** Nama bak kosong bukan berarti "belum ditetapkan"; yang benar adalah `null`. */
     INVALID_BIN_NAME,
+
+    /**
+     * Profil menunjuk berkas model yang tidak ada di penyimpanan aplikasi.
+     * Model yang hilang tidak boleh dipakai: profil tanpa model tidak dapat
+     * melakukan inferensi apa pun (D-09, MOD-01, NFR-03).
+     */
+    MODEL_FILE_MISSING,
 }

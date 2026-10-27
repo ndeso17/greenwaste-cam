@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.HelpOutline
 import androidx.compose.material.icons.rounded.CheckCircle
@@ -21,7 +22,6 @@ import androidx.compose.material.icons.rounded.WarningAmber
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -29,45 +29,47 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import id.pemilah.Palette
 import id.pemilah.R
 import id.pemilah.model.ActiveProfileAbsentReason
-import id.pemilah.model.ProfileImportProblem
-import id.pemilah.model.ProfileImportProblemCode
+import id.pemilah.model.ModelImportProblem
+import id.pemilah.model.ModelImportProblemCode
 import id.pemilah.model.ProfileSwitchBlock
 import id.pemilah.model.ProfileSwitchBlockCode
 
 /**
- * Layar Models: daftar profil model tersimpan, label kelas, alasan penolakan,
- * dan penanda profil aktif (UI-02, MOD-01, MOD-02).
+ * Layar Models: impor model ONNX, ambang keyakinan, dan informasi kelas yang
+ * tertulis di dalam model (UI-02, MOD-01, MOD-02, MOD-04, D-09).
  *
  * Aturan yang dijaga:
  * - Seluruh teks berasal dari `strings.xml` (D-03); tidak ada literal di dalam
  *   Composable.
+ * - Layar tidak meminta berkas konfigurasi terpisah: label, ukuran masukan, dan
+ *   keluarga keluaran dibaca dari berkas `.onnx` yang diimpor.
  * - Status validasi ditampilkan sebagai teks + ikon, bukan warna saja
  *   (`Design.md` §7).
- * - Tidak ada data contoh: layar kosong berarti belum ada profil (`Design.md` §6).
- * - Alasan penolakan berasal dari `ProfileProblem`/`ProfileJsonProblem` lewat
+ * - Tidak ada data contoh: layar kosong berarti belum ada model (`Design.md` §6).
+ * - Alasan penolakan berasal dari `ModelImportProblem`/`ProfileProblem` lewat
  *   [ModelsUiState]; layar tidak menyimpulkan sendiri sebab kegagalan.
  * - Tombol impor hanya mengirim URI terpilih ke pemanggil; pembacaan berkas
  *   dilakukan di luar Composable supaya tidak ada I/O pada frame komposisi
  *   (`Styleguide.md` §4).
+ * - Tidak ada sakelar kelompok dan tidak ada tampilan bak pada layar ini sesuai
+ *   instruksi pengguna 27 Oktober 2026; celah UI dicatat di `.work/FINDINGS.md`.
  */
 @Composable
 fun ModelsScreen(
     state: ModelsUiState,
-    onProfileFilePicked: (String) -> Unit,
+    onModelFilePicked: (String) -> Unit,
     modifier: Modifier = Modifier,
-    importProblems: List<ProfileImportProblem> = emptyList(),
+    importProblems: List<ModelImportProblem> = emptyList(),
     onThresholdTextChange: (String, String) -> Unit = { _, _ -> },
     onThresholdCommit: (String) -> Unit = {},
-    onGroupingToggle: (String, Boolean) -> Unit = { _, _ -> },
     onActivateProfile: (String) -> Unit = {},
     switchBlocks: List<ProfileSwitchBlock> = emptyList(),
 ) {
@@ -75,7 +77,7 @@ fun ModelsScreen(
         contract = ActivityResultContracts.OpenDocument(),
     ) { uri ->
         // `null` berarti operator membatalkan pemilih dokumen; itu bukan galat.
-        uri?.let { onProfileFilePicked(it.toString()) }
+        uri?.let { onModelFilePicked(it.toString()) }
     }
     Column(
         modifier = modifier
@@ -89,7 +91,7 @@ fun ModelsScreen(
             fontSize = 20.sp,
             fontWeight = FontWeight.SemiBold,
         )
-        Button(onClick = { picker.launch(PROFILE_MIME_TYPES) }) {
+        Button(onClick = { picker.launch(MODEL_MIME_TYPES) }) {
             Text(text = stringResource(R.string.models_action_import))
         }
         if (importProblems.isNotEmpty()) {
@@ -106,11 +108,10 @@ fun ModelsScreen(
             )
 
             state.isEmpty -> EmptyModelsState()
-            else -> ProfilesList(
+            else -> ModelsList(
                 state = state,
                 onThresholdTextChange = onThresholdTextChange,
                 onThresholdCommit = onThresholdCommit,
-                onGroupingToggle = onGroupingToggle,
                 onActivateProfile = onActivateProfile,
             )
         }
@@ -118,8 +119,9 @@ fun ModelsScreen(
 }
 
 /**
- * Alasan pergantian profil ditolak (MOD-03), dikembalikan `ProfileSwitchGuard`
- * lewat [ModelsSession]; layar tidak menyimpulkan sebabnya sendiri.
+ * Alasan pergantian profil ditolak (MOD-03, MOD-04), dikembalikan
+ * `ProfileSwitchGuard` lewat [ModelsSession]; layar tidak menyimpulkan sebabnya
+ * sendiri.
  */
 @Composable
 private fun SwitchBlocks(blocks: List<ProfileSwitchBlock>) {
@@ -139,13 +141,21 @@ private fun ProfileSwitchBlockCode.messageRes(): Int = when (this) {
     ProfileSwitchBlockCode.MACHINE_RUNNING -> R.string.models_switch_running
     ProfileSwitchBlockCode.ACTIVE_TARGET_PRESENT -> R.string.models_switch_active_target
     ProfileSwitchBlockCode.PROFILE_INVALID -> R.string.models_switch_invalid_profile
+    ProfileSwitchBlockCode.CONFIDENCE_THRESHOLD_UNSET -> R.string.models_switch_threshold_unset
 }
 
-/** Filter pemilih dokumen: hanya berkas JSON profil yang ditawarkan (UI-02). */
-private val PROFILE_MIME_TYPES = arrayOf("application/json")
+/**
+ * Filter pemilih dokumen.
+ *
+ * Penyimpanan Android tidak selalu memberi MIME `application/octet-stream`
+ * untuk berkas `.onnx`, sehingga penyaringan MIME dapat menyembunyikan berkas
+ * yang sah. Jenis berkas diperiksa dari nama berkas pada alur impor, bukan dari
+ * penyaring pemilih (MOD-02).
+ */
+private val MODEL_MIME_TYPES = arrayOf("*/*")
 
 @Composable
-private fun ImportProblems(problems: List<ProfileImportProblem>) {
+private fun ImportProblems(problems: List<ModelImportProblem>) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         problems.forEach { problem ->
             Text(
@@ -158,13 +168,18 @@ private fun ImportProblems(problems: List<ProfileImportProblem>) {
 }
 
 @StringRes
-private fun ProfileImportProblemCode.messageRes(): Int = when (this) {
-    ProfileImportProblemCode.UNREADABLE_FILE -> R.string.models_import_unreadable
-    ProfileImportProblemCode.EMPTY_FILE -> R.string.models_import_empty
-    ProfileImportProblemCode.FILE_TOO_LARGE -> R.string.models_import_too_large
-    ProfileImportProblemCode.INVALID_JSON -> R.string.models_import_invalid_json
-    ProfileImportProblemCode.INVALID_PROFILE -> R.string.models_import_invalid_profile
-    ProfileImportProblemCode.STORAGE_FAILED -> R.string.models_import_storage_failed
+private fun ModelImportProblemCode.messageRes(): Int = when (this) {
+    ModelImportProblemCode.MISSING_FILE_NAME -> R.string.models_import_missing_name
+    ModelImportProblemCode.NOT_ONNX_MODEL -> R.string.models_import_not_onnx
+    ModelImportProblemCode.UNREADABLE_FILE -> R.string.models_import_unreadable
+    ModelImportProblemCode.EMPTY_FILE -> R.string.models_import_empty
+    ModelImportProblemCode.FILE_TOO_LARGE -> R.string.models_import_too_large
+    ModelImportProblemCode.UNREADABLE_MODEL -> R.string.models_import_unreadable_model
+    ModelImportProblemCode.MISSING_CLASS_NAMES -> R.string.models_import_missing_classes
+    ModelImportProblemCode.UNSUPPORTED_INPUT_SHAPE -> R.string.models_import_unsupported_input
+    ModelImportProblemCode.UNSUPPORTED_OUTPUT_SHAPE -> R.string.models_import_unsupported_output
+    ModelImportProblemCode.INVALID_PROFILE -> R.string.models_import_invalid_profile
+    ModelImportProblemCode.STORAGE_FAILED -> R.string.models_import_storage_failed
 }
 
 @Composable
@@ -185,11 +200,10 @@ private fun EmptyModelsState() {
 }
 
 @Composable
-private fun ProfilesList(
+private fun ModelsList(
     state: ModelsUiState,
     onThresholdTextChange: (String, String) -> Unit,
     onThresholdCommit: (String) -> Unit,
-    onGroupingToggle: (String, Boolean) -> Unit,
     onActivateProfile: (String) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -202,12 +216,11 @@ private fun ProfilesList(
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             items(state.rows, key = { row -> row.fileName }) { row ->
-                ProfileRow(
+                ModelRow(
                     state = state,
                     row = row,
                     onThresholdTextChange = onThresholdTextChange,
                     onThresholdCommit = onThresholdCommit,
-                    onGroupingToggle = onGroupingToggle,
                     onActivateProfile = onActivateProfile,
                 )
             }
@@ -216,12 +229,11 @@ private fun ProfilesList(
 }
 
 @Composable
-private fun ProfileRow(
+private fun ModelRow(
     state: ModelsUiState,
     row: ModelsProfileRow,
     onThresholdTextChange: (String, String) -> Unit,
     onThresholdCommit: (String) -> Unit,
-    onGroupingToggle: (String, Boolean) -> Unit,
     onActivateProfile: (String) -> Unit,
 ) {
     Column(
@@ -257,7 +269,8 @@ private fun ProfileRow(
                 )
             }
         }
-        row.version?.let { version ->
+        // Versi hanya ditampilkan bila model menuliskannya pada metadata.
+        row.version?.takeIf { it.isNotBlank() }?.let { version ->
             Text(
                 text = stringResource(R.string.models_version, version),
                 color = Palette.onSurfaceMuted,
@@ -269,10 +282,10 @@ private fun ProfileRow(
             color = row.status.tint(),
             fontSize = 13.sp,
         )
-        if (row.labels.isNotEmpty()) {
+        if (row.classCount > 0) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    text = stringResource(R.string.models_labels_title),
+                    text = stringResource(R.string.models_classes_title, row.classCount),
                     color = Palette.onSurface,
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -291,9 +304,8 @@ private fun ProfileRow(
             onThresholdTextChange = onThresholdTextChange,
             onThresholdCommit = onThresholdCommit,
         )
-        GroupingToggle(row = row, onGroupingToggle = onGroupingToggle)
         // Tombol aktifkan hanya muncul untuk profil yang lolos validasi; profil
-        // rusak tidak dapat diaktifkan (MOD-03).
+        // rusak atau modelnya hilang tidak dapat diaktifkan (MOD-03).
         if (row.status == ModelsProfileStatus.VALID && !row.isActive) {
             Button(onClick = { onActivateProfile(row.profileId) }) {
                 Text(text = stringResource(R.string.models_action_activate))
@@ -305,7 +317,8 @@ private fun ProfileRow(
 /**
  * Penyunting ambang keyakinan (MOD-04). Nilai awal berasal dari profil tersimpan
  * lewat [ModelsUiState.thresholdTextOf]; bentuk persen ditampilkan bersama nilai
- * pecahan tanpa membulatkan diam-diam. Alasan penolakan tampil pada field ini,
+ * pecahan tanpa membulatkan diam-diam. Ambang `0.0` ditampilkan sebagai "belum
+ * ditetapkan", bukan sebagai ambang sah. Alasan penolakan tampil pada field ini,
  * bukan sebagai pesan umum.
  */
 @Composable
@@ -332,9 +345,12 @@ private fun ThresholdEditor(
             modifier = Modifier.fillMaxWidth(),
         )
         Text(
-            text = percent?.let { stringResource(R.string.models_threshold_percent, it) }
-                ?: stringResource(R.string.models_threshold_hint),
-            color = Palette.onSurfaceMuted,
+            text = when {
+                !row.thresholdSet -> stringResource(R.string.models_threshold_unset)
+                percent != null -> stringResource(R.string.models_threshold_percent, percent)
+                else -> stringResource(R.string.models_threshold_hint)
+            },
+            color = if (row.thresholdSet) Palette.onSurfaceMuted else Palette.warning,
             fontSize = 12.sp,
         )
         state.thresholdProblems[row.profileId]?.forEach { problem -> ProblemLine(problem) }
@@ -344,55 +360,12 @@ private fun ThresholdEditor(
     }
 }
 
-/**
- * Sakelar aturan kelompok (MOD-06). Nilainya tersimpan per profil, tetapi
- * keterangan menyatakan bahwa perilaku pengelompokan belum ditetapkan (B-07),
- * sehingga sakelar tidak mengklaim perilaku yang belum ada.
- */
-@Composable
-private fun GroupingToggle(row: ModelsProfileRow, onGroupingToggle: (String, Boolean) -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = stringResource(R.string.models_grouping_label),
-                color = Palette.onSurface,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.SemiBold,
-            )
-            Text(
-                text = stringResource(R.string.models_grouping_note),
-                color = Palette.onSurfaceMuted,
-                fontSize = 12.sp,
-            )
-        }
-        Switch(
-            checked = row.groupingEnabled == true,
-            enabled = row.groupingEnabled != null,
-            onCheckedChange = { enabled -> onGroupingToggle(row.profileId, enabled) },
-        )
-    }
-}
-
 @Composable
 private fun LabelLine(label: ModelsLabelUi) {
-    val text = when {
-        label.wasteClass == null -> stringResource(R.string.models_label_unmapped, label.label)
-        label.bin == null -> stringResource(
-            R.string.models_label_without_bin,
-            label.label,
-            label.wasteClass.name,
-        )
-
-        else -> stringResource(
-            R.string.models_label_with_bin,
-            label.label,
-            label.wasteClass.name,
-            label.bin,
-        )
+    val text = if (label.wasteClass == null) {
+        stringResource(R.string.models_label_unmapped, label.label)
+    } else {
+        stringResource(R.string.models_label_mapped, label.label, label.wasteClass.name)
     }
     Text(
         text = text,
@@ -452,6 +425,7 @@ private fun ModelsProblemCode.messageRes(): Int = when (this) {
     ModelsProblemCode.UNKNOWN_NORMALIZATION -> R.string.models_reason_unknown_normalization
     ModelsProblemCode.CLASS_NOT_IN_PROFILE -> R.string.models_reason_class_not_in_profile
     ModelsProblemCode.INVALID_BIN_NAME -> R.string.models_reason_invalid_bin_name
+    ModelsProblemCode.MODEL_FILE_MISSING -> R.string.models_reason_model_file_missing
 }
 
 @StringRes
@@ -464,5 +438,5 @@ private fun ActiveProfileAbsentReason.toMessageRes(): Int = when (this) {
 @Preview(widthDp = 960, heightDp = 540)
 @Composable
 private fun ModelsScreenEmptyPreview() {
-    ModelsScreen(state = ModelsUiState(), onProfileFilePicked = {})
+    ModelsScreen(state = ModelsUiState(), onModelFilePicked = {})
 }

@@ -69,16 +69,23 @@ object ProfileSwitchGuard {
         ),
     )
 
-    private fun profileBlocks(candidate: ModelProfile): List<ProfileSwitchBlock> =
+    private fun profileBlocks(candidate: ModelProfile): List<ProfileSwitchBlock> = buildList {
         when (val validation = ProfileValidator.validate(candidate)) {
-            is ProfileValidation.Valid -> emptyList()
-            is ProfileValidation.Rejected -> listOf(
+            is ProfileValidation.Valid -> Unit
+            is ProfileValidation.Rejected -> add(
                 ProfileSwitchBlock(
                     code = ProfileSwitchBlockCode.PROFILE_INVALID,
                     problems = validation.problems,
                 ),
             )
         }
+        // Ambang `0.0` berarti "belum ditetapkan" (D-09): model baru diimpor
+        // belum punya ambang pilihan operator, sehingga deteksi tidak punya
+        // batas keyakinan dan tidak boleh dipakai memilah (MOD-04).
+        if (candidate.confidenceThreshold <= 0.0) {
+            add(ProfileSwitchBlock(ProfileSwitchBlockCode.CONFIDENCE_THRESHOLD_UNSET))
+        }
+    }
 }
 
 /** Keputusan pergantian profil; penolakan tidak pernah mengubah profil aktif. */
@@ -102,4 +109,11 @@ enum class ProfileSwitchBlockCode {
 
     /** Profil tujuan tidak lolos decode atau validasi (MOD-02). */
     PROFILE_INVALID,
+
+    /**
+     * Ambang keyakinan belum ditetapkan (`0.0`) sehingga deteksi tidak punya
+     * batas keyakinan (MOD-04, D-09). Profil tetap tersimpan; yang diblokir
+     * hanya pengaktifannya.
+     */
+    CONFIDENCE_THRESHOLD_UNSET,
 }

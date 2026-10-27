@@ -13,6 +13,12 @@ import id.pemilah.domain.waste.WasteClass
  * ukuran input terhadap tensor. Keduanya membutuhkan berkas model dan menunggu
  * B-02; pemeriksaan itu menjadi tanggung jawab pemuat model (WP-15), bukan
  * validator metadata ini.
+ *
+ * Ambang keyakinan `0.0` **sah** di sini karena berarti "belum ditetapkan"
+ * (D-09): model yang baru diimpor belum punya ambang pilihan operator. Yang
+ * dilarang adalah nilai negatif atau di atas `1.0`. Aktivasi model dengan ambang
+ * belum ditetapkan diblokir `ProfileSwitchGuard`, bukan validator, supaya model
+ * tetap dapat tersimpan dan diperiksa operator (MOD-04).
  */
 object ProfileValidator {
 
@@ -33,7 +39,7 @@ object ProfileValidator {
             }
             addAll(labelProblems(profile))
             addAll(outputProblems(profile.output))
-            if (!(profile.confidenceThreshold > 0.0 && profile.confidenceThreshold <= 1.0)) {
+            if (!(profile.confidenceThreshold >= 0.0 && profile.confidenceThreshold <= 1.0)) {
                 add(ProfileProblem("confidenceThreshold", ProfileProblemReason.INVALID_CONFIDENCE_THRESHOLD))
             }
             if (profile.input.width <= 0 || profile.input.height <= 0) {

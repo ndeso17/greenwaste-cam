@@ -50,6 +50,30 @@ class ProfileRepository(private val store: ConfigStore) {
             .toWriteResult()
     }
 
+    /**
+     * Simpan profil beserta salinan berkas modelnya (D-09, MOD-01, NFR-03).
+     *
+     * Urutan tulisan: berkas model lebih dulu, profil sesudahnya. Profil adalah
+     * penanda bahwa model boleh dipakai; menulis profil lebih dulu akan
+     * meninggalkan profil yang menunjuk model yang belum ada. Bila tulisan
+     * profil gagal, berkas model yatim yang tertinggal tidak pernah dipakai
+     * karena tidak ada profil yang menunjuknya.
+     */
+    fun saveWithModel(profile: ModelProfile, modelBytes: ByteArray): ProfileWriteResult {
+        val validation = ProfileValidator.validate(profile)
+        if (validation is ProfileValidation.Rejected) {
+            return ProfileWriteResult.Rejected(validation.problems)
+        }
+        val modelWrite = store.writeModelFile(profile.modelFile, modelBytes)
+        if (modelWrite is SaveResult.Failed) return modelWrite.toWriteResult()
+        return save(profile)
+    }
+
+    /** `true` bila `profileId` sudah dipakai profil atau berkas modelnya (MOD-01). */
+    fun exists(profileId: String): Boolean =
+        store.profileFileExists(fileNameFor(profileId)) ||
+            store.modelFileExists(modelFileNameFor(profileId))
+
     /** Profil aktif yang sah, atau [ActiveProfileState.None] beserta alasannya. */
     fun active(): ActiveProfileState {
         val profileId = store.readActiveProfileId()
@@ -102,7 +126,20 @@ class ProfileRepository(private val store: ConfigStore) {
             is ProfileDecodeResult.Decoded -> when (
                 val validation = ProfileValidator.validate(decoded.profile)
             ) {
-                is ProfileValidation.Valid -> StoredProfile.Usable(fileName, decoded.profile)
+                is ProfileValidation.Valid -> modelFileProblems(decoded.profile).let { problems ->
+                    if (problems.isEmpty()) {
+                        StoredProfile.Usable(fileName, decoded.profile)
+                    } else {
+                        StoredProfile.Broken(
+                            fileName = fileName,
+                            profileId = decoded.profile.profileId,
+                            jsonProblems = emptyList(),
+                            validationProblems = problems,
+                            profile = decoded.profile,
+                        )
+                    }
+                }
+
                 is ProfileValidation.Rejected -> StoredProfile.Broken(
                     fileName = fileName,
                     profileId = decoded.profile.profileId,
@@ -114,6 +151,20 @@ class ProfileRepository(private val store: ConfigStore) {
         }
     }
 
+    /**
+     * Keluhan tentang berkas model yang dirujuk profil (D-09, MOD-01).
+     *
+     * Pemeriksaan ini ada di repositori, bukan di [ProfileValidator], karena
+     * validator bersifat murni dan tidak membaca penyimpanan. Profil yang
+     * modelnya hilang tetap terdaftar dengan alasannya, bukan dihapus diam-diam.
+     */
+    private fun modelFileProblems(profile: ModelProfile): List<ProfileProblem> =
+        if (profile.modelFile.isBlank() || !store.modelFileExists(profile.modelFile)) {
+            listOf(ProfileProblem("modelFile", ProfileProblemReason.MODEL_FILE_MISSING))
+        } else {
+            emptyList()
+        }
+
     private fun SaveResult.toWriteResult(): ProfileWriteResult = when (this) {
         is SaveResult.Saved -> ProfileWriteResult.Written
         is SaveResult.Failed -> ProfileWriteResult.StorageFailed(reason, detail)
@@ -122,6 +173,10 @@ class ProfileRepository(private val store: ConfigStore) {
     companion object {
         fun fileNameFor(profileId: String): String =
             "${ConfigStore.PROFILE_PREFIX}$profileId${ConfigStore.PROFILE_EXTENSION}"
+
+        /** Nama berkas salinan model ONNX milik satu profil (D-09). */
+        fun modelFileNameFor(profileId: String): String =
+            "${ConfigStore.MODEL_PREFIX}$profileId${ConfigStore.MODEL_EXTENSION}"
 
         fun profileIdFrom(fileName: String): String = fileName
             .removePrefix(ConfigStore.PROFILE_PREFIX)
