@@ -195,6 +195,7 @@ fun AppNavigation(
                 onStartOperation = { operationSession.start() },
                 onStopOperation = { operationSession.stop() },
                 onFrame = { frame -> operationSession.onFrame(frame) },
+                onCameraStatusChange = { status -> operationSession.updateCameraStatus(status) },
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -363,6 +364,7 @@ private fun DestinationContent(
     onStartOperation: () -> Unit,
     onStopOperation: () -> Unit,
     onFrame: (id.pemilah.inference.ArgbFrame) -> Unit,
+    onCameraStatusChange: (id.pemilah.camera.CameraStatus) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (destination == AppDestination.OPERATION) {
@@ -378,6 +380,7 @@ private fun DestinationContent(
             onStart = onStartOperation,
             onStop = onStopOperation,
             onFrame = onFrame,
+            onCameraStatusChange = onCameraStatusChange,
         )
         return
     }

@@ -260,6 +260,17 @@ internal object ModelsNumbers {
     fun toPercentText(value: Double): String =
         java.math.BigDecimal.valueOf(value).movePointRight(2).stripTrailingZeros().toPlainString() + "%"
 
+    /**
+     * Bentuk persen untuk nilai keyakinan inferensi (tipe `Float`).
+     *
+     * `Float` membawa derau biner (`0.95609998…`); teks operator dibulatkan ke
+     * persen bulat supaya tidak menampilkan angka palsu berpresisi tinggi.
+     */
+    fun floatToPercentText(value: Float): String =
+        java.math.BigDecimal.valueOf((value * 100f).toDouble())
+            .setScale(0, java.math.RoundingMode.HALF_UP)
+            .toPlainString() + "%"
+
     /** Baca teks operator menjadi pecahan; `null` bila bukan bilangan. */
     fun parseFraction(text: String): Double? =
         text.trim().replace(',', '.').takeIf { it.isNotEmpty() }?.toDoubleOrNull()

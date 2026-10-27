@@ -222,6 +222,16 @@ class ModelsUiStateTest {
     }
 
     @Test
+    fun percentTextFromFloat_roundsToWholePercent() {
+        // Nilai keyakinan inferensi bertipe Float; teksnya tidak boleh memamerkan
+        // derau pecahan seperti 95.60999870300293%.
+        assertEquals("96%", ModelsNumbers.floatToPercentText(0.9560999870300293f))
+        assertEquals("3%", ModelsNumbers.floatToPercentText(0.031126385554671288f))
+        assertEquals("100%", ModelsNumbers.floatToPercentText(1f))
+        assertEquals("0%", ModelsNumbers.floatToPercentText(0f))
+    }
+
+    @Test
     fun unsetThreshold_rowReportsThresholdNotSet() {
         // Model hasil impor ONNX menyimpan `0.0` = "belum ditetapkan" (D-09).
         val row = ModelsUiState.from(

@@ -72,7 +72,7 @@ private fun ClassificationResult(result: ClassificationUi.Result) {
         )
         PanelField(
             label = stringResource(R.string.classification_confidence),
-            value = ModelsNumbers.toPercentText(result.probability.toDouble()),
+            value = ModelsNumbers.floatToPercentText(result.probability),
         )
         PanelField(
             label = stringResource(R.string.classification_threshold),
@@ -91,7 +91,7 @@ private fun ClassificationResult(result: ClassificationUi.Result) {
         result.runnerUp.firstOrNull()?.let { (label, probability) ->
             PanelField(
                 label = stringResource(R.string.classification_runner_up),
-                value = "$label ${ModelsNumbers.toPercentText(probability.toDouble())}",
+                value = "$label ${ModelsNumbers.floatToPercentText(probability)}",
             )
         }
     }
