@@ -28,20 +28,20 @@ Objek tak dikenal diwakili `null` pada deteksi, bukan anggota enum.
 ```json
 {
   "schemaVersion": 1,
-  "profileId": "uuid",
-  "name": "yolov8-sampah-v2",
-  "version": "2.0.0",
-  "modelFile": "models/yolov8-sampah-v2.onnx",
+  "profileId": "sampah-v3",
+  "name": "sampah-v3",
+  "version": "8.3.0",
+  "modelFile": "model-sampah-v3.onnx",
   "labels": ["Organik", "Plastik", "Kaleng", "Styrofoam", "Kaca", "Kardus", "Besi"],
   "classMapping": { "Organik": "ORGANIK" },
   "input": {
-    "width": 0, "height": 0,
+    "width": 640, "height": 640,
     "normalization": "scale_0_1",
     "layout": "nchw"
   },
   "output": {
     "format": "yolo_v8",
-    "boxesNormalized": true,
+    "boxesNormalized": false,
     "hasObjectness": false
   },
   "confidenceThreshold": 0.0,
@@ -49,6 +49,21 @@ Objek tak dikenal diwakili `null` pada deteksi, bukan anggota enum.
   "binAssignment": { "ORGANIK": null }
 }
 ```
+
+**Asal nilai (D-09).** Berkas JSON ini tidak diimpor operator dan tidak
+disunting tangan; ia dihasilkan `ModelImport` dari berkas `.onnx` yang dipilih:
+
+| Field | Asal |
+|---|---|
+| `profileId`, `name` | nama berkas model tanpa akhiran `.onnx`, dijadikan bentuk aman berkas; bentrok nama diberi akhiran `-2`, `-3`, … sehingga impor tidak menimpa model lama |
+| `version` | metadata `version` model; string kosong bila model tidak menuliskannya |
+| `modelFile` | `model-<profileId>.onnx`, salinan biner di penyimpanan internal aplikasi |
+| `labels` | metadata `names` model, urut indeks kelas |
+| `classMapping` | pencocokan nama label model ke tujuh kelas resmi (tidak peka huruf besar, hanya huruf/angka); label yang tidak cocok tidak dipetakan dan ditolak validator |
+| `input` | bentuk tensor masukan; `normalization` `scale_0_1` dan layout mengikuti posisi sumbu kanal |
+| `output` | bentuk tensor keluaran: `4 + jumlah kelas` → `yolo_v8`, `5 + jumlah kelas` → `yolo_v5`; `boxesNormalized` `false` karena keluaran mentah YOLO memakai koordinat piksel |
+| `confidenceThreshold` | `0.0` = belum ditetapkan; operator yang menetapkan |
+| `groupingEnabled`, `binAssignment` | nilai netral saat impor; belum ada kendali pada layar Models |
 
 Aturan validasi:
 
@@ -58,8 +73,13 @@ Aturan validasi:
 4. Satu label tidak boleh dipetakan ke lebih dari satu `WasteClass`.
 5. Label yang memetakan ke dua kelas sekaligus (`KALENG` + `BESI`) ditolak.
 6. `input.width`/`height` wajib sama dengan tensor model.
-7. `confidenceThreshold` pada rentang `0.0 < x <= 1.0`.
+7. `confidenceThreshold` pada rentang `0.0 <= x <= 1.0`, dengan `0.0` berarti
+   **belum ditetapkan**: profil sah dan tersimpan, tetapi aktivasi ditolak
+   `ProfileSwitchGuard` sampai operator mengisi ambang.
 8. `binAssignment` boleh kosong pada impor, tetapi kelas `null` memblokir start.
+9. `modelFile` wajib menunjuk berkas yang ada di penyimpanan aplikasi; profil
+   yang berkas modelnya hilang dilaporkan `MODEL_FILE_MISSING` dan tidak dapat
+   diaktifkan.
 
 Nilai angka di atas adalah placeholder; nilai sah berasal dari model dan
 keputusan B-02.

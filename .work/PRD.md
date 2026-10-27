@@ -96,10 +96,10 @@ Penjabaran sub-klausa: lihat PRD kamera tahap 3
 
 | ID | Kebutuhan | Kriteria terima |
 |---|---|---|
-| MOD-01 | Impor profil ONNX beserta identitas, label, konfigurasi inferensi | Profil tersimpan dan dimuat ulang setelah aplikasi ditutup |
-| MOD-02 | Validasi kompatibilitas; tolak dengan alasan spesifik | Model klasifikasi saja ditolak; jumlah label harus cocok dengan keluaran |
+| MOD-01 | Impor **berkas model ONNX** (`.onnx`); identitas, label, ukuran masukan, dan keluarga keluaran dibaca dari berkas model | Profil dan salinan berkas model tersimpan serta dimuat ulang setelah aplikasi ditutup |
+| MOD-02 | Validasi kompatibilitas; tolak dengan alasan spesifik | Model tanpa metadata kelas, bentuk tensor tak didukung, atau label di luar tujuh kelas resmi ditolak dengan alasan per label |
 | MOD-03 | Pergantian profil hanya saat pemantauan berhenti dan target kosong | Kegagalan muat mempertahankan profil lama |
-| MOD-04 | Ambang keyakinan per profil | Nilai tersimpan; perubahan berlaku pada frame berikutnya |
+| MOD-04 | Ambang keyakinan per profil | Nilai tersimpan; ambang `0.0` berarti **belum ditetapkan** dan memblokir aktivasi; perubahan berlaku pada frame berikutnya |
 | MOD-05 | Pemetaan kelas aktif ke bak tujuan | Kelas aktif tanpa tujuan valid memblokir start |
 | MOD-06 | Aturan pengambilan kelompok per profil | Sakelar tersimpan; perilaku kelompok mengikuti tahap 5 PRD induk |
 
@@ -107,6 +107,16 @@ Penjabaran sub-klausa: lihat PRD kamera tahap 3
 kelas aktifnya tidak dapat dipetakan ke tujuh kelas resmi, atau yang memakai
 gabungan `Kaleng`+`Besi` sebagai satu label, karena kebutuhan pemisahan bak
 tidak dapat dipenuhi.
+
+**Bentuk impor (D-09, 27 Oktober 2026).** Operator tidak lagi mengimpor berkas
+konfigurasi JSON. Yang diimpor adalah berkas model hasil pelatihan (`.onnx`);
+label kelas dibaca dari metadata `names` model, ukuran masukan dari bentuk
+tensor masukan, dan keluarga keluaran dari bentuk tensor keluaran. JSON profil
+tetap dipakai sebagai format penyimpanan internal yang dihasilkan impor
+(`Schema.md` §3). Konsekuensinya: MOD-05 dan MOD-06 **belum memiliki kendali
+pada layar Models** — logika domainnya ada dan diuji, celah UI-nya dicatat pada
+`../.work/FINDINGS.md`. Inferensi pada frame kamera belum diimplementasikan dan
+bukan bagian dari perubahan ini.
 
 ### 6.3 Kalibrasi kamera (CAL-01, CAL-06)
 

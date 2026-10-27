@@ -429,63 +429,61 @@ rotasi sistem dikunci. State pemantauan dan alur deteksi tidak diubah.
 ## Layar Models — 27 Oktober 2026
 
 Bagian ini mencatat tata letak dan keadaan layar Models sesuai implementasi
-WP-07–WP-10 dan WP-14 pada `.work/Plan_ModelsScreen_27102026-102208.md`.
+WP-01–WP-09 pada `.work/Plan_ModelsOnnxImport_27102026-123043.md` (D-09).
+
+Layar ini **hanya** memuat tiga hal: impor berkas model ONNX, ambang keyakinan
+per model, dan informasi kelas yang tertulis di dalam model. Tidak ada impor
+berkas konfigurasi JSON, tidak ada sakelar kelompok, dan tidak ada tampilan bak.
 
 ### Komponen
 
 | Komponen | Isi | Sumber state |
 |---|---|---|
-| `ModelsProfileList` | Satu kartu per profil: nama, versi, status validasi (ikon + teks), label beserta kelas dan bak, alasan penolakan per bidang | `ModelsUiState.rows` |
-| `ModelsImportAction` | Tombol "Impor profil" dengan pemilih dokumen berfilter JSON; alasan kegagalan impor tampil di atas daftar | `ModelsSession.importProfile` |
-| `ModelsThresholdEditor` | Nilai awal dari profil tersimpan, ditampilkan sebagai pecahan dan persen, tombol "Terapkan ambang" | `ModelsUiState.thresholdDrafts` |
-| `ModelsGroupingToggle` | Sakelar per profil dengan keterangan bahwa perilaku kelompok belum ditetapkan (B-07) | `ModelsUiState.rows[].groupingEnabled` |
-| `ModelsActivateAction` | Tombol "Jadikan profil aktif" hanya pada profil yang lolos validasi dan belum aktif | `ModelsSession.setActiveProfile` |
+| `ModelsImportAction` | Tombol "Impor model" dengan pemilih dokumen tanpa filter MIME; alasan kegagalan impor tampil di atas daftar | `ModelsSession.importModel` |
+| `ModelsProfileList` | Satu kartu per model: nama, versi (bila model menuliskannya), status validasi (ikon + teks), jumlah kelas, label berurutan beserta kelas resmi hasil pencocokan, alasan penolakan per bidang | `ModelsUiState.rows` |
+| `ModelsThresholdEditor` | Nilai awal dari profil tersimpan, ditampilkan sebagai pecahan dan persen, tombol "Terapkan ambang"; ambang `0.0` ditampilkan sebagai "Belum ditetapkan" dengan warna peringatan | `ModelsUiState.thresholdDrafts` |
+| `ModelsActivateAction` | Tombol "Jadikan model aktif" hanya pada model yang lolos validasi dan belum aktif | `ModelsSession.setActiveProfile` |
 
 ### Keadaan wajib
 
 | Keadaan | Tampilan |
 |---|---|
-| Kosong | Judul "Belum ada profil model." dan ajakan mengimpor berkas |
-| Memuat | Teks "Memuat daftar profil." tanpa daftar palsu |
-| Siap | Daftar profil dengan status masing-masing |
-| Gagal | Alasan per bidang pada kartu profil; impor gagal menampilkan kode alasannya |
-| Terblokir | Alasan pergantian profil ditolak (`ProfileSwitchBlockCode`) dan keterangan bahwa perilaku kelompok menunggu B-07 |
+| Kosong | Judul "Belum ada model." dan ajakan mengimpor berkas `.onnx` |
+| Memuat | Teks "Memuat daftar model." tanpa daftar palsu |
+| Siap | Daftar model dengan status masing-masing |
+| Ambang belum ditetapkan | Keterangan "Belum ditetapkan" pada field ambang dan penolakan aktivasi `CONFIDENCE_THRESHOLD_UNSET` |
+| Gagal | Alasan per bidang pada kartu model; impor gagal menampilkan kode alasannya (bukan `.onnx`, bukan model yang dapat dibuka, metadata kelas tidak ada, bentuk tensor tidak didukung, label tak dikenal, penyimpanan gagal) |
+| Terblokir | Alasan pergantian model ditolak (`ProfileSwitchBlockCode`) |
 
-Layar tidak boleh menampilkan profil, label, ambang, atau bak contoh. Daftar
-kosong berarti belum ada berkas profil di penyimpanan aplikasi.
+Layar tidak boleh menampilkan model, label, ambang, atau bak contoh. Daftar
+kosong berarti belum ada model di penyimpanan aplikasi.
 
 ### Aksesibilitas
 
 - Status validasi selalu berupa ikon + teks, bukan warna saja (`Design.md` §7).
-- Penanda profil aktif berupa teks "Aktif" di samping ikon status.
+- Penanda model aktif berupa teks "Aktif" di samping ikon status.
 - Setiap kontrol memakai teks dari `strings.xml`; tidak ada label yang hanya
   berupa ikon pada layar ini.
-- Target sentuh 48 dp mengikuti `minimumInteractiveComponentSize` pada tombol dan
-  sakelar Material yang dipakai.
+- Target sentuh 48 dp mengikuti `minimumInteractiveComponentSize` pada tombol
+  Material yang dipakai.
 - Alasan penolakan ditulis lengkap di dalam kartu, tidak dipotong menjadi
   singkatan.
 
 ### Catatan uji perangkat — 27 Oktober 2026
 
-Diuji pada `moto g57 power`, Android 16, 1080×2400 px, density 330 dpi
-(`.work/evidence/models-device.md`):
-
-- Portrait penuh: seluruh isi kartu tampil tanpa gulir.
-- Layar rendah (landscape tersimulasi 2400×1080): kartu profil lebih tinggi
-  daripada layar, sehingga bagian bawah kartu **perlu digulir**. Ini disengaja:
-  kartu tidak dipadatkan agar alasan penolakan tetap terbaca utuh. Karena itu
-  klaim "semua kontrol tampil tanpa gulir" tidak berlaku untuk layar rendah.
-- Teks 1,3×: seluruh teks tetap utuh; catatan kelompok membungkus dua baris.
-- Target sentuh terukur ≥48 dp pada field ambang (56,2 dp), tombol terapkan dan
-  sakelar (48,0 dp), serta item rail (48,5 dp).
-
-Keadaan wajib lain (memuat, gagal, terblokir) dibuktikan pada perangkat hanya
-untuk keadaan gagal-impor. Keadaan memuat dan terblokir baru terbukti pada unit
-test; uji perangkat lanjutan menyusul bila jalur tersebut dapat dipicu.
+Catatan uji perangkat untuk tata letak kartu (portrait penuh, layar rendah perlu
+digulir, teks 1,3×, target sentuh ≥48 dp) berasal dari
+`.work/evidence/models-device.md` dan tetap berlaku karena struktur kartu tidak
+berubah bentuk. Bukti impor `.onnx` nyata dicatat terpisah pada
+`.work/evidence/models-onnx-import.md`.
 
 ### Yang belum ditetapkan
 
-- Perilaku pengelompokan objek menunggu B-07; sakelar hanya menyimpan pilihan.
+- Inferensi pada frame kamera (`Detector`, `OutputDecoder`, overlay hasil) belum
+  diimplementasikan; model yang diimpor belum dipakai mendeteksi objek.
+- Perilaku pengelompokan objek menunggu B-07; logika domain sakelar masih ada
+  tetapi tidak lagi tampil di layar ini (celah UI dicatat di
+  `../.work/FINDINGS.md`).
 - Nama bak sah dan alokasi tujuh kelas ke enam bak menunggu B-15/B-16; layar
-  menampilkan nama bak apa adanya dari berkas profil.
-- Impor dan verifikasi tensor berkas `.onnx` menunggu B-02/B-17 (WP-12).
+  tidak lagi menampilkan bak.
+- Model tujuh kelas hasil retraining menunggu B-17.

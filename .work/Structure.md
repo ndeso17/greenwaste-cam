@@ -52,11 +52,12 @@ Arah dependensi: `ui` → `domain` → `data` → `platform`
 | `id.pemilah.domain.operation` | `OperationGuard`, `StartDecision`, `MachineState` | `OperationGuard` | WP-32, 33, WP-51 |
 | `id.pemilah.domain.calibration` | `CalibrationValidity` | `CalibrationValidity` | WP-19 |
 | `id.pemilah.config` | `MachineConfig` (model + validasi) | — | WP-10 |
-| `id.pemilah.storage` | `ConfigStore`, `ConfigCodec`, `FileConfigStorage`, `ContentProfileReader` | `ProfileRepository` (sebagian) | WP-11 |
-| `id.pemilah.model` | `ProfileValidator`, `ModelProfile`, `ProfileJson`, `ProfileRepository`, `ProfileSettings`, `ProfileSwitchGuard`, `ProfileImport`, `ProfileImporter`, `ModelSession` | `ProfileValidator`, `ProfileRepository` | WP-14, 15, 16, WP-53 |
+| `id.pemilah.storage` | `ConfigStore`, `ConfigCodec`, `FileConfigStorage`, `ContentModelReader` | `ProfileRepository` (sebagian) | WP-11 |
+| `id.pemilah.model` | `ProfileValidator`, `ModelProfile`, `ProfileJson`, `ProfileRepository`, `ProfileSettings`, `ProfileSwitchGuard`, `ModelImport`, `ModelFileReader`, `OnnxModelInfo`, `OnnxMetadata` | `ProfileValidator`, `ProfileRepository` | WP-14, 15, 16, WP-53, WP-01–05 |
 | `id.pemilah.calibration` | `CameraCalibration` | `CameraCalibration` | WP-17, 18 |
 | `id.pemilah.camera` | `CameraSource`, `FramePipeline` | `CameraSource`, `FramePipeline` | WP-21 |
 | `id.pemilah.inference` | `Detector`, `OutputDecoder` | `Detector`, `OutputDecoder` | WP-22 |
+| `id.pemilah.onnx` | `OrtOnnxModelInspector` (inspeksi berkas model lewat ONNX Runtime) | `ProfileRepository` (inspeksi) | WP-04 |
 | `id.pemilah.area` | `WorkAreaFilter` | `WorkAreaFilter` | WP-17, 23 |
 | `id.pemilah.protocol` | `CommandCodec` | `CommandCodec` | WP-25, 27 |
 | `id.pemilah.link` | `ControllerLink` (USB) | `ControllerLink` | WP-26, 28 |
@@ -69,9 +70,12 @@ Nama berkas mengikuti deklarasi utama (`Styleguide.md` §1). Test berpasangan
 Berkas layar Models (WP-07–WP-10): `ui/ModelsUiState.kt`, `ui/ModelsScreen.kt`,
 `ui/ModelsSession.kt`; berkas profil: `model/ProfileJson.kt`,
 `model/ProfileRepository.kt`, `model/ProfileSettings.kt`,
-`model/ProfileSwitchGuard.kt`, `model/ProfileImport.kt`,
-`storage/ContentProfileReader.kt`. Rencana impor ONNX
-`model/OnnxProfileImporter.kt` belum dibuat karena WP-12 terblokir B-02/B-17.
+`model/ProfileSwitchGuard.kt`. Impor model ONNX (D-09, WP-01–WP-05):
+`model/ModelImport.kt`, `model/ModelFileReader.kt`, `model/OnnxModelInfo.kt`,
+`model/OnnxMetadata.kt`, `storage/ContentModelReader.kt`,
+`onnx/OrtOnnxModelInspector.kt`. Impor berkas JSON profil
+(`model/ProfileImport.kt`, `storage/ContentProfileReader.kt`) **dihapus** pada
+D-09; JSON tetap ada sebagai format penyimpanan internal.
 
 Keadaan per 27 Oktober 2026: paket yang **belum** memiliki berkas adalah
 `domain.target`, `domain.tracking` (`Tracker` berada di `domain.detection`),
