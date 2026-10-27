@@ -1,4 +1,4 @@
-# GreenWaste Cam — Aplikasi Android Pemilah Objek
+# GreenWaste Cam Aplikasi Android Pemilah Objek
 
 Aplikasi Android untuk sistem pemilah objek berbasis kamera: membaca aliran
 kamera, menjalankan inferensi ONNX lokal, melacak objek di atas conveyor,
