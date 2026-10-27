@@ -9,9 +9,11 @@
 ```text
 Camera/
 ├── AGENTS.md
+├── README.md                   gambaran proyek, build, status (WP-66)
 ├── .gitignore
 ├── .work/                      spesifikasi repo (dokumen, bukan kode)
 │   ├── PRD.md  Architecture.md  Schema.md  Styleguide.md
+│   ├── PRD-Breakdown.md        peta requirement → implementasi (WP-66)
 │   ├── Design.md  OperationScreen.xml  Rules.md  Structure.md
 │   ├── spec-machine.md          parameter konfigurasi & kalibrasi (WP-05)
 │   └── assets/OperationMockup-v1.png
@@ -63,6 +65,12 @@ Arah dependensi: `ui` → `domain` → `data` → `platform`
 
 Nama berkas mengikuti deklarasi utama (`Styleguide.md` §1). Test berpasangan
 `X.kt` → `XTest.kt` pada `src/test/java/id/pemilah/...` dengan paket sama.
+
+Keadaan per 27 Oktober 2026: paket yang **belum** memiliki berkas adalah
+`domain.target`, `domain.tracking` (`Tracker` berada di `domain.detection`),
+`domain.calibration` (logika kalibrasi di `id.pemilah.calibration`), `area`,
+`inference`, `protocol`, dan `link`. Peta requirement → berkas aktual ada di
+`.work/PRD-Breakdown.md`.
 
 ## 3. Perintah build dan pemeriksaan
 
