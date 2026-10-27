@@ -616,3 +616,10 @@ Border card 2 dp berwarna hijau (#2E7D32) hanya jika seluruh objek memiliki
 label koreksi tersimpan. Card belum dikoreksi atau baru sebagian dikoreksi
 berborder merah (#C62828). Teks status dan centang tetap tersedia; warna
 border menunjukkan koreksi, sedangkan centang menunjukkan pilihan.
+
+### Foto detail Galeri utuh (27 Oktober 2026)
+Foto detail dibatasi tinggi maksimum 320 dp dan dipusatkan horizontal. Lebar
+tidak dipaksa penuh: rasio sumber menentukan ukuran yang muat dalam batas
+tinggi/lebar, sehingga foto potret tampil lebih sempit tanpa memotong atas
+atau menimpa teks koreksi. Overlay dan sasaran ketuk mengikuti bingkai foto
+yang sama; kebijakan pratinjau kamera memenuhi layar tidak diterapkan ke Galeri.

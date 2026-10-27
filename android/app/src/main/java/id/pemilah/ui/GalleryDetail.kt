@@ -21,6 +21,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -56,7 +57,9 @@ internal fun GalleryDetail(
         GalleryImage(
             store = store,
             record = record,
-            modifier = Modifier.fillMaxWidth().heightIn(max = 320.dp),
+            // Let aspectRatio choose a width that fits the height cap. Forcing the
+            // full width as well makes portrait content overflow its measured bounds.
+            modifier = Modifier.heightIn(max = 320.dp).align(Alignment.CenterHorizontally),
             selectedObjectIds = selectedIds,
             focusObjectId = focusObjectId,
             onObjectClick = { objectId ->
