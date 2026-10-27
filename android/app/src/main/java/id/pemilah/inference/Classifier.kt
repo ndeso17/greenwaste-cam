@@ -13,6 +13,7 @@ class ArgbFrame(
     val pixels: IntArray,
     val width: Int,
     val height: Int,
+    val capturedAtMillis: Long = System.currentTimeMillis(),
 ) {
     init {
         require(pixels.size == width * height) {

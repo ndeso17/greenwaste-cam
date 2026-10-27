@@ -217,7 +217,7 @@ Referensi koreksi berupa descriptor warna spasial crop 8×8 RGB. Pencocokan
 memakai jarak absolut rata-rata; kemiripan = 1 − jarak. Ambang dapat diubah
 operator di Galeri, nilai awal konservatif 0.97; bukan ambang kemampuan mesin
 atau jaminan akurasi. Referensi lintas label yang sama dekat ditolak. Hanya
-sampel terkonfirmasi dari identitas berkas model yang sama dimuat saat start.
+sampel terkonfirmasi dari SHA-256 isi model klasifikasi yang sama dimuat saat start.
 Skor referensi ditampilkan sebagai kemiripan, terpisah dari probabilitas model.
 Bobot model tidak berubah. Descriptor sederhana sensitif pencahayaan, sudut,
 dan latar; evaluasi data terpisah tetap diperlukan.
@@ -226,3 +226,21 @@ Detektor dibundel sebagai assets/object-detector.onnx dari CV/best.onnx.
 Input/output aktual diverifikasi sebelum runtime. Proposal confidence 0.25
 dan NMS IoU 0.45 mengikuti parameter script CV/infer.py, nilai awal teknis
 yang dapat diperbarui, bukan angka mesin.
+
+Pemasok runtime menolak bentuk tensor di luar [1,3,640,640] → [1,17,8400].
+Bukti inspeksi aktual: onnxruntime Python pada CV/best.onnx, 27 Oktober 2026.
+NMS lintas kelas dipakai karena seluruh label lama hanya proposal lokasi.
+Maksimum 32 proposal per frame membatasi biaya klasifikasi; bukan batas robot.
+Preview FILL_CENTER dan ImageAnalysis memakai aspek 4:3 serta rotasi display
+yang sama. Pratinjau memenuhi bingkai (dipotong di tengah) supaya layar tidak
+menyempit; overlay memakai transformasi isi (`fillRect`) dari aspek frame
+tegak, terpisah dari letterbox input YOLO. Setiap kotak deteksi mendapat titik
+bantu bernomor berwarna sama di tengahnya; nomor sama dengan urutan objek pada
+ringkasan dan Galeri. Titik hanya menandai kotak, bukan tiap benda di dalamnya.
+Keselarasan pada HP tetap memerlukan pembuktian perangkat.
+
+Koreksi Galeri dapat dilakukan per objek atau massal: `SampleStore.correctMany`
+menulis satu gambar sekali sehingga tidak ada koreksi separuh dan melaporkan
+gambar yang gagal tanpa menghentikan sisanya; `deleteMany` melakukan hal sama
+untuk penghapusan. Label yang tidak dimiliki model terlampir dilewati dengan
+jumlah yang dilaporkan ke operator.

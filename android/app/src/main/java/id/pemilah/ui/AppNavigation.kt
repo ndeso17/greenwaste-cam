@@ -52,6 +52,18 @@ import id.pemilah.model.ModelImport
 import id.pemilah.model.ModelImportProblem
 import id.pemilah.model.ProfileRepository
 import id.pemilah.model.ProfileSwitchBlock
+import android.graphics.Bitmap
+import android.os.Handler
+import android.os.Looper
+import java.io.ByteArrayOutputStream
+import java.io.File
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import id.pemilah.inference.ObjectPipeline
+import id.pemilah.onnx.OrtObjectDetector
+import id.pemilah.storage.SampleStore
 import id.pemilah.onnx.OrtClassifier
 import id.pemilah.onnx.OrtOnnxModelInspector
 import id.pemilah.storage.ConfigStore
@@ -93,13 +105,47 @@ fun AppNavigation(
     val classifier = remember(context) {
         OrtClassifier(ConfigStore(FileConfigStorage(context.applicationContext)))
     }
+    val samples = remember(context) { SampleStore(File(context.filesDir, "object-samples")) }
+    val detector = remember(context) { OrtObjectDetector(context) }
+    val modelIdentities = remember { java.util.concurrent.ConcurrentHashMap<String, String>() }
+    val pipeline = remember(detector, classifier) { ObjectPipeline(detector, classifier) { profile ->
+        modelIdentities.getOrPut(profile.modelFile) {
+            val bytes = ConfigStore(FileConfigStorage(context.applicationContext)).readModelFile(profile.modelFile)
+                ?: error("MODEL_FILE_MISSING")
+            java.security.MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it) }
+        }
+    } }
+    val scope = rememberCoroutineScope()
+    val mainHandler = remember { Handler(Looper.getMainLooper()) }
     val operationSession = remember(modelsSession, classifier) {
         OperationSession(
             classifier = classifier,
             activeProfile = { modelsSession.activeProfile() },
             machineState = { OperationSession.machineState() },
             hasActiveTarget = { OperationSession.hasActiveTarget() },
+            objectPipeline = pipeline,
+            loadCorrections = { samples.snapshot() },
         )
+    }
+    val testSession = remember(modelsSession, pipeline, samples) {
+        ModelTestSession(classifier, { modelsSession.activeProfile() }, pipeline, samples) { frame ->
+            val bitmap = Bitmap.createBitmap(frame.pixels, frame.width, frame.height, Bitmap.Config.ARGB_8888)
+            try { ByteArrayOutputStream().use { output ->
+                check(bitmap.compress(Bitmap.CompressFormat.JPEG, 90, output)) { "IMAGE_ENCODE_FAILED" }
+                output.toByteArray()
+            } } finally { bitmap.recycle() }
+        }
+    }
+    var revision by remember { mutableStateOf(0) }
+    var starting by remember { mutableStateOf(false) }
+    DisposableEffect(testSession, operationSession) {
+        onDispose {
+            testSession.stop(); operationSession.stop()
+            // The camera analyzer is shared and serial. Close runtime sessions after its current frame.
+            java.util.concurrent.Executors.newSingleThreadExecutor().also { executor ->
+                executor.execute { pipeline.close(); executor.shutdown() }
+            }
+        }
     }
     var operationRunning by remember(operationSession) {
         mutableStateOf(operationSession.isRunning)
@@ -114,13 +160,15 @@ fun AppNavigation(
         mutableStateOf(operationSession.detectionsAtMillis)
     }
     DisposableEffect(operationSession) {
-        operationSession.onChange = {
+        operationSession.onChange = { mainHandler.post {
             operationRunning = operationSession.isRunning
             classificationUi = operationSession.classification
             detections = operationSession.detections
             detectionsAtMillis = operationSession.detectionsAtMillis
-        }
-        onDispose { operationSession.onChange = {} }
+            revision++
+        } }
+        testSession.operation.onChange = { mainHandler.post { revision++ } }
+        onDispose { operationSession.onChange = {}; testSession.operation.onChange = {} }
     }
     var modelsState by remember(modelsSession) { mutableStateOf(modelsSession.load()) }
     var importProblems by remember { mutableStateOf(emptyList<ModelImportProblem>()) }
@@ -132,7 +180,10 @@ fun AppNavigation(
         modelsState = outcome.state
         // Profil aktif dapat hilang karena penghapusan; pemantauan harus berhenti
         // daripada terus memakai model yang sudah tidak ada (D-13).
-        operationSession.onActiveProfileChanged()
+        operationSession.stop()
+        testSession.stop()
+        modelIdentities.clear()
+        classifier.close()
         importProblems = outcome.messages
             .filterIsInstance<ModelsSessionMessage.ImportRejected>()
             .flatMap { it.problems }
@@ -168,7 +219,23 @@ fun AppNavigation(
         }
         Row(Modifier.fillMaxSize()) {
             Spacer(Modifier.width(reservedWidth))
-            DestinationContent(
+            if (current == AppDestination.GALLERY) {
+                GalleryScreen(samples, Modifier.fillMaxSize())
+            } else if (current == AppDestination.MODEL_TEST) {
+                @Suppress("UNUSED_VARIABLE") val observed = revision
+                val operation = testSession.operation
+                ModelTestScreen(
+                    state = rememberDefaultOperationState().copy(profileNameAndVersion = modelsSession.operationProfileLabel(modelsState), isRunning = operation.isRunning),
+                    classification = operation.classification, detections = operation.detections,
+                    detectionsAtMillis = operation.detectionsAtMillis, frameAspectRatio = operation.frameAspectRatio,
+                    saved = testSession.saved,
+                    onStart = { if (!starting) { starting = true; scope.launch {
+                        try { withContext(Dispatchers.Default) { testSession.start() }; if (current != AppDestination.MODEL_TEST) testSession.stop() } finally { starting = false }
+                    } } },
+                    onStop = { testSession.stop() }, onFrame = { testSession.operation.onFrame(it) },
+                    onCameraStatusChange = { operation.updateCameraStatus(it) }, modifier = Modifier.fillMaxSize(),
+                )
+            } else DestinationContent(
                 destination = current,
                 modelsState = modelsState,
                 importProblems = importProblems,
@@ -202,7 +269,10 @@ fun AppNavigation(
                 classification = classificationUi,
                 detections = detections,
                 detectionsAtMillis = detectionsAtMillis,
-                onStartOperation = { operationSession.start() },
+                frameAspectRatio = operationSession.frameAspectRatio,
+                onStartOperation = { if (!starting) { starting = true; scope.launch {
+                    try { withContext(Dispatchers.Default) { operationSession.start() }; if (current != AppDestination.OPERATION) operationSession.stop() } finally { starting = false }
+                } } },
                 onStopOperation = { operationSession.stop() },
                 onFrame = { frame -> operationSession.onFrame(frame) },
                 onCameraStatusChange = { status -> operationSession.updateCameraStatus(status) },
@@ -213,7 +283,7 @@ fun AppNavigation(
             current = current,
             expanded = railExpanded,
             onToggle = { railExpanded = NavigationRailState(railExpanded).toggle().expanded },
-            onSelect = { current = it },
+            onSelect = { operationSession.stop(); testSession.stop(); current = it },
         )
     }
 }
@@ -373,6 +443,7 @@ private fun DestinationContent(
     classification: ClassificationUi,
     detections: List<id.pemilah.inference.TileDetection>,
     detectionsAtMillis: Long,
+    frameAspectRatio: Float?,
     onStartOperation: () -> Unit,
     onStopOperation: () -> Unit,
     onFrame: (id.pemilah.inference.ArgbFrame) -> Unit,
@@ -395,6 +466,7 @@ private fun DestinationContent(
             onStop = onStopOperation,
             onFrame = onFrame,
             onCameraStatusChange = onCameraStatusChange,
+            frameAspectRatio = frameAspectRatio,
         )
         return
     }

@@ -6,6 +6,7 @@ import id.pemilah.inference.Classifier
 import id.pemilah.inference.ClassifierFailure
 import id.pemilah.inference.ClassifierFailureCode
 import id.pemilah.inference.ClassifierOutcome
+import id.pemilah.inference.*
 import id.pemilah.inference.FrameTiles
 import id.pemilah.inference.TileDetection
 import id.pemilah.inference.TileDetectionFilter
@@ -21,6 +22,7 @@ import id.pemilah.model.ModelProfile
 sealed interface ClassificationUi {
     /** Belum ada frame yang berhasil diklasifikasi sejak pemantauan dimulai. */
     data object Waiting : ClassificationUi
+    data object NoObjects : ClassificationUi
 
     data class Result(
         val profileName: String,
@@ -30,6 +32,8 @@ sealed interface ClassificationUi {
         val runnerUp: List<Pair<String, Float>>,
         /** Jumlah petak yang diklasifikasi pada frame ini. */
         val tilesChecked: Int,
+        val originalLabel: String? = null,
+        val referenceSimilarity: Float? = null,
     ) : ClassificationUi {
         /** Probabilitas di bawah ambang keyakinan profil (MOD-04, D-13). */
         val belowThreshold: Boolean get() = probability < threshold
@@ -55,8 +59,17 @@ class OperationSession(
     private val activeProfile: () -> ActiveProfileState,
     private val machineState: () -> MachineState = { MachineState.Stopped },
     private val hasActiveTarget: () -> Boolean = { false },
+    private val objectPipeline: ObjectPipeline? = null,
+    private val showLowConfidence: Boolean = false,
+    private val loadCorrections: () -> CorrectionSnapshot = { CorrectionSnapshot() },
+    private val onAnalyzed: (ArgbFrame, List<AnalyzedObject>, ModelProfile, Long) -> Unit = { _, _, _, _ -> },
 ) {
-    var isRunning: Boolean = false
+    private val lock = Any()
+    @Volatile private var generation = 0L
+    private var references = CorrectionSnapshot()
+    var frameAspectRatio: Float? = null
+        private set
+    @Volatile var isRunning: Boolean = false
         private set
 
     var classification: ClassificationUi = ClassificationUi.Waiting
@@ -104,7 +117,7 @@ class OperationSession(
      * Kalibrasi, konfigurasi mesin, pemetaan bak, dan koneksi controller tidak
      * ikut diperiksa pada pemantauan (D-11).
      */
-    fun start(): Boolean {
+    fun start(): Boolean = synchronized(lock) {
         if (isRunning) return false
         val profile = runningProfile() ?: return false
         val state = OperationUiState(
@@ -114,6 +127,11 @@ class OperationSession(
             isRunning = false,
         )
         if (!StartGuardProjection.canStart(state)) return false
+        references = try { loadCorrections() } catch (e: Exception) {
+            classification = ClassificationUi.Failed(profile.name, ClassifierFailure(ClassifierFailureCode.RUN_FAILED, e.message))
+            onChange(); return false
+        }
+        generation++
         isRunning = true
         classification = ClassificationUi.Waiting
         detections = emptyList()
@@ -124,8 +142,9 @@ class OperationSession(
     private fun profileLabel(profile: ModelProfile): String =
         profile.version.takeIf { it.isNotBlank() }?.let { "${profile.name} $it" } ?: profile.name
 
-    fun stop() {
+    fun stop(): Unit = synchronized(lock) {
         if (!isRunning) return
+        generation++
         isRunning = false
         classification = ClassificationUi.Waiting
         detections = emptyList()
@@ -141,10 +160,40 @@ class OperationSession(
     fun onFrame(frame: ArgbFrame) {
         if (!isRunning) return
         val profile = runningProfile() ?: return
+        val token = generation
+        val capturedAt = frame.capturedAtMillis
+        objectPipeline?.let { pipeline ->
+            val analyzed = try { pipeline.analyze(profile, frame, references) }
+            catch (e: Exception) {
+                synchronized(lock) {
+                    if (isRunning && generation == token) {
+                        detections = emptyList()
+                        classification = ClassificationUi.Failed(profile.name, ClassifierFailure(ClassifierFailureCode.RUN_FAILED, e.message))
+                        onChange()
+                    }
+                }
+                return
+            }
+            synchronized(lock) {
+                if (!isRunning || generation != token || runningProfile()?.modelFile != profile.modelFile) return
+                frameAspectRatio = frame.width.toFloat() / frame.height
+                detectionsAtMillis = capturedAt
+                detections = analyzed.filter { showLowConfidence || it.probability >= profile.confidenceThreshold || it.correction != null }
+                    .map { TileDetection(it.region, it.label, it.probability, it.correction?.similarity) }
+                val top = analyzed.maxByOrNull { it.probability }
+                classification = top?.let {
+                    ClassificationUi.Result(profile.name, it.label, it.probability, profile.confidenceThreshold, emptyList(), analyzed.size, it.originalLabel, it.correction?.similarity)
+                } ?: ClassificationUi.NoObjects
+                try { onAnalyzed(frame, analyzed, profile, capturedAt) }
+                catch (e: Exception) { classification = ClassificationUi.Failed(profile.name, ClassifierFailure(ClassifierFailureCode.RUN_FAILED, e.message)) }
+                onChange()
+            }
+            return
+        }
         val tiles = FrameTiles.split(frame, columns = TILE_COLUMNS, rows = TILE_ROWS)
         if (tiles.isEmpty()) return
         val outcomes = classifier.classifyAll(profile, tiles.map { it.frame })
-        if (!isRunning) return
+        if (!isRunning || generation != token) return
         detections = TileDetectionFilter.select(tiles, outcomes, profile.confidenceThreshold)
         detectionsAtMillis = System.currentTimeMillis()
         classification = when (val top = outcomes.filterIsInstance<ClassifierOutcome.Classified>()

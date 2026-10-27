@@ -28,7 +28,7 @@ fun ClassificationPanel(
     modifier: Modifier = Modifier,
 ) {
     MachinePanel(title = stringResource(R.string.classification_title), modifier = modifier) {
-        if (!state.isRunning) {
+        if (!state.isRunning && classification !is ClassificationUi.Failed) {
             PlaceholderText(text = stringResource(R.string.classification_stopped))
             return@MachinePanel
         }
@@ -36,6 +36,8 @@ fun ClassificationPanel(
             ClassificationUi.Waiting -> PlaceholderText(
                 text = stringResource(R.string.classification_waiting),
             )
+
+            ClassificationUi.NoObjects -> PlaceholderText(text = stringResource(R.string.detections_empty))
 
             is ClassificationUi.Result -> ClassificationResult(result = classification)
 
@@ -49,6 +51,9 @@ fun ClassificationPanel(
                         text = stringResource(classification.failure.code.messageRes()),
                         tone = StatusTone.DANGER,
                     )
+                    classification.failure.detail?.let { detail ->
+                        Text(stringResource(R.string.failure_detail, detail), color = Palette.warning)
+                    }
                 }
             }
         }
@@ -70,6 +75,9 @@ private fun ClassificationResult(result: ClassificationUi.Result) {
                 "${stringResource(R.string.classification_title)}: ${result.label}",
             ),
         )
+        result.referenceSimilarity?.let { similarity ->
+            Text(stringResource(R.string.reference_label, result.originalLabel.orEmpty(), (similarity*100).toInt(), (result.probability*100).toInt()), color = Palette.warning)
+        }
         PanelField(
             label = stringResource(R.string.classification_confidence),
             value = ModelsNumbers.floatToPercentText(result.probability),

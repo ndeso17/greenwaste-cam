@@ -18,6 +18,8 @@ import id.pemilah.R
 enum class AppDestination(val titleRes: Int) {
     OPERATION(R.string.menu_operation),
     MODELS(R.string.menu_models),
+    MODEL_TEST(R.string.menu_model_test),
+    GALLERY(R.string.menu_gallery),
     BINS(R.string.menu_bins),
     MACHINE(R.string.menu_machine),
     CALIBRATION(R.string.menu_calibration),

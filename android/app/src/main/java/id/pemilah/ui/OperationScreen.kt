@@ -90,6 +90,9 @@ fun OperationScreen(
     onStop: () -> Unit = {},
     onFrame: ((ArgbFrame) -> Unit)? = null,
     onCameraStatusChange: (CameraStatus) -> Unit = {},
+    testMode: Boolean = false,
+    frameAspectRatio: Float? = null,
+    savedSamples: Int = 0,
 ) {
     var panelVisible by rememberSaveable { mutableStateOf(false) }
     var panelScroll = rememberScrollState()
@@ -114,7 +117,7 @@ fun OperationScreen(
     val detectionsStale = ui.isRunning && detections.isNotEmpty() &&
         nowMillis - detectionsAtMillis > OperationSession.DETECTION_STALE_MS
     val detectionUi = if (ui.isRunning) {
-        detections.map { detection ->
+        detections.mapIndexed { index, detection ->
             DetectionUi(
                 box = NormalizedBox(
                     left = detection.region.left,
@@ -125,6 +128,10 @@ fun OperationScreen(
                 classLabel = detection.label,
                 confidence = detection.probability,
                 stale = detectionsStale,
+                frameAspectRatio = frameAspectRatio,
+                referenceSimilarity = detection.referenceSimilarity,
+                // Nomor sama dengan urutan kotak pada ringkasan aksesibilitas.
+                marker = (index + 1).toString(),
             )
         }
     } else {
@@ -149,6 +156,8 @@ fun OperationScreen(
             onFrame = frameCallback,
             detections = detectionUi,
             modifier = Modifier.fillMaxSize(),
+            testMode = testMode,
+            savedSamples = savedSamples,
         )
         if (panelVisible) {
             Column(
@@ -260,6 +269,8 @@ private fun CameraStage(
     onFrame: ((ArgbFrame) -> Unit)?,
     detections: List<DetectionUi>,
     modifier: Modifier = Modifier,
+    testMode: Boolean = false,
+    savedSamples: Int = 0,
 ) {
     var backdrop by remember { mutableStateOf<ImageBitmap?>(null) }
     var cameraBounds by remember { mutableStateOf(Rect.Zero) }
@@ -314,7 +325,10 @@ private fun CameraStage(
             modifier = Modifier.align(Alignment.TopStart)
                 .padding(start = 8.dp, end = 64.dp, top = 8.dp).fillMaxWidth(),
         ) {
-            SessionSummaryBar(state = state)
+            if (testMode) {
+                Text(stringResource(R.string.test_saved, savedSamples), color = Color.White,
+                    modifier = Modifier.padding(12.dp), fontSize = 14.sp)
+            } else SessionSummaryBar(state = state)
         }
         Column(
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
@@ -327,7 +341,7 @@ private fun CameraStage(
             ) {
                 CameraStatusStrip(state = state)
             }
-            CameraShutterControls(state = state, onStart = onStart, onStop = onStop)
+            CameraShutterControls(state = state, onStart = onStart, onStop = onStop, testMode = testMode)
         }
     }
 }
@@ -366,17 +380,14 @@ private fun GuidesToggle(visible: Boolean, onVisibleChange: (Boolean) -> Unit) {
  * Ringkasan kotak overlay untuk pembaca layar dan untuk pemeriksaan otomatis.
  * Tidak ada kotak berarti dinyatakan kosong, bukan disembunyikan.
  */
+@Composable
 private fun detectionsSummary(detections: List<DetectionUi>, stale: Boolean): String {
-    if (detections.isEmpty()) return "Tidak ada kotak objek"
+    if (detections.isEmpty()) return stringResource(R.string.detections_empty)
     val parts = detections.joinToString(", ") { detection ->
         "${detection.classLabel} ${(detection.confidence * 100).toInt()}%"
     }
-    return buildString {
-        append(detections.size)
-        append(" kotak objek: ")
-        append(parts)
-        if (stale) append(" (usang)")
-    }
+    val suffix = if (stale) " · " + stringResource(R.string.detection_stale) else ""
+    return stringResource(R.string.detections_summary, detections.size, parts) + suffix
 }
 
 @Composable

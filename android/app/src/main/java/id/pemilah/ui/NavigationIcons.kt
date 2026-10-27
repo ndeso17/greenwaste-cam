@@ -4,6 +4,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CenterFocusStrong
 import androidx.compose.material.icons.rounded.ChevronLeft
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Collections
+import androidx.compose.material.icons.rounded.Science
 import androidx.compose.material.icons.rounded.ModelTraining
 import androidx.compose.material.icons.rounded.PhotoCamera
 import androidx.compose.material.icons.rounded.ReceiptLong
@@ -36,6 +38,8 @@ internal object NavigationIcons {
 internal fun AppDestination.icon(): ImageVector = when (this) {
     AppDestination.OPERATION -> Icons.Rounded.PhotoCamera
     AppDestination.MODELS -> Icons.Rounded.ModelTraining
+    AppDestination.MODEL_TEST -> Icons.Rounded.Science
+    AppDestination.GALLERY -> Icons.Rounded.Collections
     AppDestination.BINS -> Icons.Rounded.SmartToy
     AppDestination.MACHINE -> Icons.Rounded.Settings
     AppDestination.CALIBRATION -> Icons.Rounded.CenterFocusStrong

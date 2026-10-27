@@ -78,6 +78,7 @@ data class TileDetection(
     val region: NormalizedRegion,
     val label: String,
     val probability: Float,
+    val referenceSimilarity: Float? = null,
 )
 
 /**

@@ -4,6 +4,8 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.os.Build
 import android.os.SystemClock
+import androidx.camera.core.AspectRatio
+import id.pemilah.inference.ObjectDecoder
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -70,6 +72,10 @@ fun CameraPreview(
         PreviewView(context).apply {
             // TextureView follows Compose bounds when the sidebar changes camera size.
             implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+            // FILL_CENTER: pratinjau menutupi seluruh bingkai (dipotong di tengah) agar
+            // layar tidak menyempit oleh pita hitam 4:3 (instruksi pengguna 27 Okt
+            // 2026). Overlay memakai transformasi isi yang sama lewat `fillRect`.
+            scaleType = PreviewView.ScaleType.FILL_CENTER
         }
     }
 
@@ -113,7 +119,8 @@ fun CameraPreview(
                     return@addListener
                 }
                 provider = cameraProvider
-                val preview = Preview.Builder().build().also {
+                val rotation = previewView.display?.rotation ?: android.view.Surface.ROTATION_0
+                val preview = Preview.Builder().setTargetAspectRatio(AspectRatio.RATIO_4_3).setTargetRotation(rotation).build().also {
                     it.surfaceProvider = previewView.surfaceProvider
                 }
                 val selector = CameraSelector.DEFAULT_BACK_CAMERA
@@ -127,6 +134,8 @@ fun CameraPreview(
                             if (onFrame != null) {
                                 add(
                                     ImageAnalysis.Builder()
+                                        .setTargetAspectRatio(AspectRatio.RATIO_4_3)
+                                        .setTargetRotation(rotation)
                                         .setBackpressureStrategy(
                                             ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST,
                                         )
@@ -187,23 +196,14 @@ private fun analyzeFrame(image: ImageProxy, onFrame: ((ArgbFrame) -> Unit)?) {
         if (now - lastFrameAt < FRAME_INTERVAL_MS) return
         if (!frameBusy.compareAndSet(false, true)) return
         lastFrameAt = now
-        val frame = try {
-            RgbaConversion.toArgbFrame(
-                bytes = plane.buffer.let { buffer ->
-                    ByteArray(buffer.remaining()).also { buffer.get(it) }
-                },
-                width = proxy.width,
-                height = proxy.height,
-                rowStride = plane.rowStride,
-                pixelStride = plane.pixelStride,
-            )
-        } finally {
-            // Frame yang gagal dikonversi tidak boleh menahan status sibuk.
-            frameBusy.set(false)
-        }
-        if (frame == null) return
-        onFrame(frame)
-        frameBusy.set(false)
+        try {
+            val frame = RgbaConversion.toArgbFrame(
+                bytes = plane.buffer.let { buffer -> ByteArray(buffer.remaining()).also { buffer.get(it) } },
+                width = proxy.width, height = proxy.height,
+                rowStride = plane.rowStride, pixelStride = plane.pixelStride,
+            ) ?: return
+            onFrame(ObjectDecoder.rotate(frame, proxy.imageInfo.rotationDegrees))
+        } finally { frameBusy.set(false) }
     }
 }
 

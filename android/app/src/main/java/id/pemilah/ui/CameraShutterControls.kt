@@ -39,12 +39,15 @@ internal fun CameraShutterControls(
     onStart: () -> Unit,
     onStop: () -> Unit,
     modifier: Modifier = Modifier,
+    testMode: Boolean = false,
 ) {
     val running = state.isRunning
     val enabled = if (running) StartGuardProjection.canStop(state) else StartGuardProjection.canStart(state)
     val sorting = state.stage == OperationStage.SORTING
     val label = stringResource(
-        if (running) {
+        if (testMode) {
+            if (running) R.string.test_stop else R.string.test_start
+        } else if (running) {
             if (sorting) R.string.operation_stop_sorting else R.string.operation_stop_monitoring
         } else {
             if (sorting) R.string.operation_start_sorting else R.string.operation_start_monitoring
@@ -107,7 +110,7 @@ internal fun CameraShutterControls(
             }
             Box(Modifier.size(48.dp), contentAlignment = Alignment.Center) {
                 if (running) {
-                    val stopLabel = stringResource(R.string.action_stop_now)
+                    val stopLabel = stringResource(if (testMode) R.string.test_stop else R.string.action_stop_now)
                     val stopInteraction = remember { MutableInteractionSource() }
                     val stopPressed by stopInteraction.collectIsPressedAsState()
                     val stopScale = animateFloatAsState(

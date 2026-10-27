@@ -39,19 +39,30 @@ internal fun CameraOverlaySurface(
         Canvas(Modifier.matchParentSize().blur(14.dp)) {
             val image = backdrop
             if (image != null && cameraBounds.width > 0 && cameraBounds.height > 0 &&
-                bounds.width > 0 && bounds.height > 0) {
-                val x = ((bounds.left - cameraBounds.left) / cameraBounds.width * image.width)
-                    .roundToInt().coerceIn(0, image.width - 1)
-                val y = ((bounds.top - cameraBounds.top) / cameraBounds.height * image.height)
-                    .roundToInt().coerceIn(0, image.height - 1)
-                val width = (bounds.width / cameraBounds.width * image.width).roundToInt()
-                    .coerceIn(1, image.width - x)
-                val height = (bounds.height / cameraBounds.height * image.height).roundToInt()
-                    .coerceIn(1, image.height - y)
-                drawImage(
-                    image, srcOffset = IntOffset(x, y), srcSize = IntSize(width, height),
-                    dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()),
+                bounds.width > 0 && bounds.height > 0
+            ) {
+                // Pratinjau memakai FILL_CENTER: gambar diskalakan menutupi bingkai kamera
+                // lalu dipotong di tengah. Sumber cuplikan dihitung dari transformasi isi
+                // yang sama dengan overlay deteksi, bukan dari letterbox.
+                val shown = fillRect(
+                    frameAspect = image.width.toFloat() / image.height,
+                    containerWidth = cameraBounds.width,
+                    containerHeight = cameraBounds.height,
                 )
+                if (shown.width > 0f && shown.height > 0f) {
+                    val x = ((bounds.left - cameraBounds.left - shown.left) / shown.width * image.width)
+                        .roundToInt().coerceIn(0, image.width - 1)
+                    val y = ((bounds.top - cameraBounds.top - shown.top) / shown.height * image.height)
+                        .roundToInt().coerceIn(0, image.height - 1)
+                    val width = (bounds.width / shown.width * image.width).roundToInt()
+                        .coerceIn(1, image.width - x)
+                    val height = (bounds.height / shown.height * image.height).roundToInt()
+                        .coerceIn(1, image.height - y)
+                    drawImage(
+                        image, srcOffset = IntOffset(x, y), srcSize = IntSize(width, height),
+                        dstSize = IntSize(size.width.roundToInt(), size.height.roundToInt()),
+                    )
+                }
             }
         }
         Box(Modifier.matchParentSize().background(Color.Black.copy(alpha = CameraOverlayScrimAlpha)))

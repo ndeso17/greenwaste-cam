@@ -263,3 +263,23 @@ D-14 mencatat perilaku petak lama, bukan kriteria hasil baru. Model ResNet18
 aktif tidak menyediakan lokasi. Pemilihan pemasok lokasi multiobjek menunggu
 B-UM-01; model lama CV/best.onnx tidak otomatis disahkan sebagai model tujuh
 kelas. Tidak ada janji akurasi meningkat sebelum evaluasi data terpisah.
+
+### Pelaksanaan Uji Model/Galeri (D-15)
+Mandat pengguna melanjutkan seluruh WP mengotorisasi pemasok lokasi
+CV/best.onnx + ResNet18 aktif serta referensi koreksi lokal. Persetujuan
+implementasi ini membuka B-UM-01/02 untuk pekerjaan, bukan bukti akurasi.
+D-14 kini jalur kompatibilitas test lama; aplikasi menggunakan proposal objek.
+Model lama tetap terbatas kelas/lokasi yang dapat dideteksinya; tidak menjamin
+semua sampah ditemukan. Kontur tetap di luar lingkup.
+
+### Koreksi objek mudah dan aksi massal (instruksi 27 Oktober 2026)
+Pengguna melaporkan satu kotak deteksi dapat memuat beberapa objek sehingga
+koreksi kelas sulit, dan meminta (1) titik bantu pada objek dengan warna sama
+seperti kotaknya, (2) pilihan jamak di Galeri untuk melabeli/menghapus
+sekaligus, (3) pratinjau kamera kembali memenuhi layar. Kebutuhan sesi:
+V-01 titik bantu bernomor yang dapat diketuk; V-02 aksi massal berkonfirmasi
+dengan laporan kegagalan sebagian; V-03 pratinjau penuh tanpa merusak
+keselarasan overlay; V-04 titik berasal dari geometri objek tersimpan.
+Rencana dan bukti: `.work/Plan_PerbaikanKoreksiGaleri_27102026-162929.md`,
+`.work/evidence/uji-model-galeri-koreksi.md`. Titik bantu menandai kotak, bukan
+tiap benda di dalamnya; koreksi tetap referensi visual, bukan retraining.

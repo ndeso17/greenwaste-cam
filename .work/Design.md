@@ -580,3 +580,28 @@ Seluruh teks UI kelak berasal dari strings.xml (D-03). Terapkan target
 sentuh dan label aksesibilitas §7, termasuk pemilihan objek selain melalui
 kanvas. Referensi koreksi U-06 belum boleh ditampilkan sebagai “model sudah
 dilatih”; mekanismenya masih B-UM-02.
+
+### Pelaksanaan layar tambahan (D-15)
+Galeri menyediakan thumbnail, detail gambar dengan nomor objek, pemilih label
+kelas untuk masing-masing objek, Konfirmasi kelas dan Hapus gambar dengan
+dialog konfirmasi. Ambang kemiripan referensi dapat disimpan di daftar Galeri.
+Uji Model memakai komposisi OperationScreen dengan label Mulai Uji/Stop Uji
+dan jumlah gambar tersimpan. Operasi memakai pipeline lokasi/klasifikasi sama
+dan snapshot koreksi pada start; uji menyimpan prediksi asli tanpa otomatis
+menerapkan atau mengonfirmasi referensi koreksi. Label overlay menyebut
+“referensi” dan kemiripan bila kelas berasal dari pencocokan; persen model
+tetap dilaporkan terpisah. Pemasok lokasi dan transformasi frame mengikuti
+Architecture.md §8. Pemeriksaan perangkat/akurasi dicatat terpisah.
+
+### Koreksi objek dan pilihan jamak (instruksi 27 Oktober 2026)
+Setiap kotak pada pratinjau kamera dan gambar Galeri diberi titik bantu di
+tengahnya dengan warna sama seperti kotaknya dan nomor objek; nomor itu sama
+dengan nomor pada daftar koreksi. Titik hanya menandai kotak, bukan tiap benda
+di dalamnya; bila satu kotak memuat beberapa benda, operator tetap mengoreksi
+per kotak. Di Galeri, ketukan pada titik memilih objek dan memusatkannya.
+Mode "Pilih jamak" menyediakan centang per gambar (seluruh objeknya ikut),
+centang per objek, Pilih semua, Kosongkan pilihan, "Labeli terpilih" dan
+"Hapus terpilih". Kedua aksi massal memakai dialog konfirmasi yang menyebut
+jumlah gambar dan objek; `Galeri` melaporkan bila hanya sebagian berhasil.
+Pilihan tidak mengubah makna koreksi: koreksi massal tetap tersimpan sebagai
+koreksi per objek dengan jam yang sama.

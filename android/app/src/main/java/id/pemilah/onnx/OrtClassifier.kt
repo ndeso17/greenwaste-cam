@@ -34,12 +34,12 @@ import java.nio.FloatBuffer
  * Kelas ini tidak diuji unit karena membutuhkan pustaka native. Praproses dan
  * softmax diuji terpisah pada `FramePreprocessTest`.
  */
-class OrtClassifier(private val store: ConfigStore) : Classifier {
+class OrtClassifier(private val store: ConfigStore) : Classifier, AutoCloseable {
 
     private var session: OrtSession? = null
     private var sessionModelFile: String? = null
 
-    override fun classify(profile: ModelProfile, frame: ArgbFrame): ClassifierOutcome {
+    @Synchronized override fun classify(profile: ModelProfile, frame: ArgbFrame): ClassifierOutcome {
         val prepared = prepare(profile)
         if (prepared == null) {
             return ClassifierOutcome.Failed(
@@ -60,7 +60,7 @@ class OrtClassifier(private val store: ConfigStore) : Classifier {
      * dan setiap petak dijalankan satu per satu. Hasil akhirnya sama; yang
      * berbeda hanya jumlah eksekusi sesi.
      */
-    override fun classifyAll(
+    @Synchronized override fun classifyAll(
         profile: ModelProfile,
         frames: List<ArgbFrame>,
     ): List<ClassifierOutcome> {
@@ -83,6 +83,8 @@ class OrtClassifier(private val store: ConfigStore) : Classifier {
 
     private fun prepare(profile: ModelProfile): Prepared? {
         lastFailure = null
+        session?.takeIf { sessionModelFile == profile.modelFile && store.modelFileExists(profile.modelFile) }
+            ?.let { return Prepared(it, profile) }
         val bytes = store.readModelFile(profile.modelFile)
         if (bytes == null) {
             lastFailure = ClassifierFailure(ClassifierFailureCode.MODEL_FILE_MISSING, profile.modelFile)
@@ -186,7 +188,7 @@ class OrtClassifier(private val store: ConfigStore) : Classifier {
     }
 
     /** Tutup sesi aktif; dipanggil saat pemantauan berhenti atau model berganti. */
-    fun close() {
+    @Synchronized override fun close() {
         runCatching { session?.close() }
         session = null
         sessionModelFile = null
@@ -195,9 +197,11 @@ class OrtClassifier(private val store: ConfigStore) : Classifier {
     private fun openSession(modelFile: String, bytes: ByteArray): OrtSession {
         session?.takeIf { sessionModelFile == modelFile }?.let { return it }
         close()
-        return environment.createSession(bytes, OrtSession.SessionOptions()).also {
-            session = it
-            sessionModelFile = modelFile
+        return OrtSession.SessionOptions().use { options ->
+            environment.createSession(bytes, options).also {
+                session = it
+                sessionModelFile = modelFile
+            }
         }
     }
 

@@ -69,8 +69,8 @@ class NavigationRailStateTest {
     // --- Kelengkapan tujuan ------------------------------------------------
 
     @Test
-    fun `terdapat tepat enam tujuan navigasi`() {
-        assertEquals(6, AppDestination.entries.size)
+    fun `terdapat enam tujuan utama dan dua tujuan uji baru`() {
+        assertEquals(8, AppDestination.entries.size)
     }
 
     @Test
@@ -79,6 +79,8 @@ class NavigationRailStateTest {
             listOf(
                 AppDestination.OPERATION,
                 AppDestination.MODELS,
+                AppDestination.MODEL_TEST,
+                AppDestination.GALLERY,
                 AppDestination.BINS,
                 AppDestination.MACHINE,
                 AppDestination.CALIBRATION,

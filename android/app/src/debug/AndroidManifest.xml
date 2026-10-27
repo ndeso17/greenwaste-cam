@@ -3,5 +3,6 @@
     <application>
         <!-- Explicit debug-only UI fixture, absent from release. No device control. -->
         <activity android:name=".ui.ShutterVerificationActivity" android:exported="true" />
+        <activity android:name=".ui.ModelVerificationActivity" android:exported="true" />
     </application>
 </manifest>

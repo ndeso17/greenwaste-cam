@@ -18,17 +18,19 @@ Catatan rilis dan rencana berikutnya: [Changelog](CHANGELOG.md).
 
 ## Status saat ini
 
-Tahap 3 PRD (aplikasi kamera): **UI berjalan, logika domain siap, jalur
-inferensi dan controller belum tersambung.**
+Tahap 3 PRD: kamera dan inferensi objek lokal tersedia untuk pengujian.
+Integrasi pemilahan/controller serta evaluasi akurasi lapangan belum selesai.
 
 | Bagian | Keadaan |
 |---|---|
 | Layar operasi portrait/landscape (kamera penuh, shutter overlay, status titik, ringkasan adaptif, panel kanan tersembunyi secara default) | Ada dan berjalan di perangkat |
 | Rail navigasi berikon + dapat diperkecil (232 dp ⇄ 72 dp) | Ada, diuji unit test dan diukur di perangkat |
 | Pratinjau kamera (CameraX) | Berjalan |
-| Inferensi ONNX, decoder deteksi, filter area kerja | **Belum** — menunggu model tujuh kelas (B-02/B-17) dan geometri (B-03) |
+| Deteksi lokasi + klasifikasi ONNX | YOLO lama memasok kotak, ResNet18 aktif mengklasifikasi crop; filter area mesin masih menunggu geometri |
 | Pelacakan objek, pemetaan kelas→bak, guard start, invalidasi kalibrasi, antrean telemetri, transport USB | Logika ada + unit test; sambungan ke deteksi/controller belum |
-| Layar Models, Bot, Settings, Kalibrasi, Logs | **Belum** — menu sudah ada, isinya menyatakan "Belum dikonfigurasi" |
+| Models | Impor ONNX, pilih/hapus model dan ambang profil tersedia |
+| Uji Model dan Galeri | Uji kamera, simpan gambar, koreksi kelas per objek dan referensi lokal |
+| Bot, Settings, Kalibrasi, Logs | Belum terintegrasi lengkap |
 | Uji dengan ESP32-S3 nyata | **Belum** (MANUAL-VERIFY) |
 
 Aplikasi tidak menampilkan angka atau status contoh. Nilai yang belum ada
@@ -134,3 +136,34 @@ B-04 (protokol controller), B-05 (gangguan), B-06 (ambang numerik), B-07
 - Pekerjaan dijalankan satu agen dalam satu sesi; tidak ada sub-agen.
 - Semua perubahan di-commit, dengan pesan
   `<tipe>(<lingkup>): <ringkasan>` (lihat `AGENTS.md` §13).
+
+## Uji Model dan Galeri
+
+1. Impor dan aktifkan model ResNet18 tujuh kelas melalui Models.
+2. Buka Uji Model dan tekan Mulai Uji. Kamera menampilkan kotak objek dengan
+   warna per kelas; gambar dan prediksi masing-masing objek disimpan lokal.
+   Stop Uji menghentikan analisis dan penyimpanan baru.
+3. Di Galeri, buka gambar. Setiap kotak objek punya titik bantu bernomor dengan
+   warna yang sama seperti kotaknya; ketuk titik itu untuk memilih objek, lalu
+   pilih kelas dan tekan Simpan koreksi. Prediksi awal tetap tersimpan.
+4. Untuk banyak data sekaligus, tekan "Pilih jamak": centang gambar (seluruh
+   objeknya ikut terpilih) atau centang objek satu per satu, lalu gunakan
+   "Labeli terpilih" atau "Hapus terpilih". Kedua aksi meminta konfirmasi dan
+   melaporkan bila hanya sebagian berhasil.
+5. Hapus gambar juga menghapus anotasi dan pengaruh referensinya pada sesi
+   berikutnya.
+6. Mulai pemantauan pada Operasi untuk memuat koreksi terkonfirmasi. Galeri
+   menyediakan ambang kemiripan visual; nilai awal 97%, semakin tinggi semakin
+   ketat. Kemiripan referensi ditampilkan terpisah dari probabilitas model.
+
+Ini bukan retraining: bobot ONNX tidak berubah. Referensi berupa contoh warna
+dan susunan piksel crop; pencahayaan, sudut dan latar dapat mengurangi
+kecocokan. Detektor lama terbatas data latihnya, tidak menjamin semua objek
+atau ketujuh kelas ditemukan. Kotak tetap persegi panjang, tanpa segmentasi.
+Tidak ada pengunggahan gambar atau layanan cloud. Sampel tidak dihapus otomatis;
+operator dapat menghapusnya melalui Galeri.
+
+Pratinjau kamera memenuhi seluruh area konten (dipotong di tengah, tanpa pita
+hitam); kotak dan titik objek dipetakan dengan transformasi yang sama. Titik
+bantu berada di tengah kotak, jadi bila satu kotak memuat beberapa benda, titik
+itu menandai kotak tersebut, bukan tiap benda di dalamnya.

@@ -268,3 +268,25 @@ profil asal. Tidak ada field yang menyatakan bobot ONNX telah terlatih
 sebagai akibat menyimpan anotasi. Bentuk referensi dan aturan aktivasi
 menunggu B-UM-02; inferensi tidak boleh menganggap semua sampel sebagai
 label kebenaran. Kontur/mask segmentasi tidak termasuk kontrak ini.
+
+### Format implementasi sampel versi 1 (D-15)
+File privat `object-samples/<id>.jpg` dan `<id>.json`; JSON dipublikasikan
+setelah gambar tersimpan, melalui file sementara dan rename. ModelId adalah
+SHA-256 isi ONNX klasifikasi, bukan nama berkas saja; ini mencegah koreksi
+model terhapus dipakai oleh model baru yang kebetulan bernama sama.
+SampleRecord menyimpan schemaVersion, id, sessionId, modelId, modelName,
+labels, detectorId, capturedAt, width, height, objects. Gambar sudah tegak.
+SampleObject memuat id, left/top/right/bottom ternormalisasi 0..1 terhadap
+gambar tegak, predictedLabel, probability, descriptor (8×8×3 RGB skala 0..1),
+correctedLabel nullable dan correctedAt nullable. Kedua field koreksi null
+berarti belum diperiksa. Hanya koreksi terkonfirmasi menjadi referensi.
+`similarity.txt` menyimpan ambang pilihan operator 0.8–1.0, awal 0.97.
+Record rusak atau gambar hilang dilaporkan sebagai kegagalan baca. Tidak ada
+retensi/penghapusan otomatis; operator menghapus melalui Galeri.
+
+Koreksi massal tidak menambah field: setiap objek yang dipilih ditulis dengan
+`correctedLabel` dan `correctedAt` yang sama. Satu gambar ditulis satu kali,
+jadi kegagalan tulis tidak menghasilkan koreksi separuh; objek yang diminta
+tetapi tidak ada pada record menolak seluruh gambar itu. Penghapusan massal
+memakai penanda hapus yang sama seperti penghapusan tunggal, dan id yang sudah
+tidak ada dilaporkan sebagai gagal, bukan dihitung berhasil.

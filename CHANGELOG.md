@@ -1,5 +1,18 @@
 # Changelog
 
+## Belum dirilis — 27 Oktober 2026
+
+- Tambahkan Uji Model dengan Mulai Uji/Stop Uji serta penyimpanan gambar dan prediksi per objek.
+- Tambahkan Galeri untuk koreksi kelas dan penghapusan gambar/anotasi lokal.
+- Ganti jalur aplikasi dari kotak petak menjadi proposal kotak YOLO, lalu klasifikasi ResNet18 per crop; dukung beberapa kotak dan warna tetap per kelas.
+- Muat referensi visual terkonfirmasi saat mulai pemantauan; tampilkan kemiripan terpisah dari probabilitas model, tanpa mengubah bobot ONNX.
+- Selaraskan rotasi/aspek frame kamera dan overlay; tolak hasil inferensi dari sesi yang sudah dihentikan.
+- Tambahkan pemeriksaan decoder, multiobjek, penyimpanan, koreksi, kegagalan simpan dan pergantian sesi.
+- Tambahkan titik bantu bernomor berwarna sama dengan kotak pada pratinjau kamera dan gambar Galeri; ketukan titik memilih objek.
+- Tambahkan pilihan jamak di Galeri: pilih gambar/objek, labeli terpilih, dan hapus terpilih dengan konfirmasi serta laporan kegagalan sebagian.
+- Kembalikan pratinjau kamera memenuhi layar (FILL_CENTER) dan selaraskan overlay dengan transformasi isi, bukan letterbox.
+- Batas: detektor lama belum menjamin cakupan tujuh kelas; pencocokan referensi peka perubahan tampilan dan belum membuktikan peningkatan akurasi lapangan.
+
 ## v0.1.0 — 27 Oktober 2026
 
 Rilis pertama GreenWaste Cam berfokus pada **UI menu kamera (Operasi)**.

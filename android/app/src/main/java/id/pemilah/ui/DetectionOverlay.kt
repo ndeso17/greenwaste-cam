@@ -10,6 +10,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.res.stringResource
+import id.pemilah.R
 import androidx.compose.ui.text.TextMeasurer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
@@ -30,6 +32,12 @@ data class DetectionUi(
     val classLabel: String,
     val confidence: Float,
     val stale: Boolean,
+    val frameAspectRatio: Float? = null,
+    val referenceSimilarity: Float? = null,
+    /** Nomor objek pada titik bantu; `null` berarti titik tanpa nomor. */
+    val marker: String? = null,
+    /** Objek yang sedang dipilih operator: kotak dan titik dipertebal. */
+    val highlighted: Boolean = false,
 )
 
 /** Satu blok kerja terkonfigurasi. */
@@ -55,6 +63,11 @@ fun DetectionOverlay(
     targetLabel: String? = null,
 ) {
     val measurer = rememberTextMeasurer()
+    val staleText = stringResource(R.string.detection_stale)
+    val labels = detections.map { d ->
+        d.referenceSimilarity?.let { stringResource(R.string.reference_label, d.classLabel, (it*100).toInt(), (d.confidence*100).toInt()) }
+            ?: "${d.classLabel} ${(d.confidence*100).toInt()}%"
+    }
     Canvas(modifier = modifier.fillMaxSize()) {
         workArea?.let { polygon ->
             val path = androidx.compose.ui.graphics.Path().apply {
@@ -95,24 +108,38 @@ fun DetectionOverlay(
             )
         }
 
-        detections.forEach { detection ->
-            val rect = detection.box.toRect(size.width, size.height)
-            val color = if (detection.stale && showStaleMark) Palette.warning else Palette.onSurface
+        detections.forEachIndexed { index, detection ->
+            val ratio = detection.frameAspectRatio
+            // Pratinjau memakai FILL_CENTER: gambar menutupi bingkai dan dipotong di
+            // tengah, jadi kotak dipetakan dengan transformasi isi (bukan letterbox).
+            val content = if (ratio != null) fillRect(ratio, size.width, size.height) else null
+            val rect = content?.let { frame ->
+                val (left, top) = frame.map(detection.box.left, detection.box.top)
+                val (right, bottom) = frame.map(detection.box.right, detection.box.bottom)
+                SimpleRect(Offset(left, top), Size(right - left, bottom - top))
+            } ?: detection.box.toRect(size.width, size.height)
+            val color = if (detection.stale && showStaleMark) Palette.warning else detectionClassColor(detection.classLabel)
             drawRect(
                 color = color,
                 topLeft = rect.topLeft,
                 size = rect.size,
-                style = Stroke(width = 1.5.dp.toPx()),
+                style = Stroke(width = if (detection.highlighted) 3.dp.toPx() else 1.5.dp.toPx()),
+            )
+            // Titik bantu tepat di tengah objek: warna sama dengan kotaknya supaya
+            // operator tahu titik ini milik kotak yang mana (instruksi pengguna).
+            val (anchorX, anchorY) = objectAnchor(detection.box)
+            val center = content?.map(anchorX, anchorY)?.let { (x, y) -> Offset(x, y) }
+                ?: (rect.topLeft + Offset(rect.size.width / 2f, rect.size.height / 2f))
+            drawMarker(
+                measurer = measurer,
+                text = detection.marker,
+                center = center,
+                color = color,
+                highlighted = detection.highlighted,
             )
             drawLabel(
                 measurer = measurer,
-                text = buildString {
-                    append(detection.classLabel)
-                    append(' ')
-                    append((detection.confidence * 100).toInt())
-                    append('%')
-                    if (detection.stale && showStaleMark) append(" (usang)")
-                },
+                text = labels[index] + if (detection.stale && showStaleMark) " ($staleText)" else "",
                 anchor = Offset(rect.topLeft.x, rect.topLeft.y),
                 color = color,
                 above = true,
@@ -167,5 +194,52 @@ private fun DrawScope.drawLabel(
         style = TextStyle(fontSize = 11.sp, color = color),
     )
     val y = if (above) (anchor.y - layout.size.height).coerceAtLeast(0f) else anchor.y
-    drawText(textLayoutResult = layout, topLeft = Offset(anchor.x, y))
+    val x = anchor.x.coerceIn(0f, (size.width - layout.size.width).coerceAtLeast(0f))
+    drawText(textLayoutResult = layout, topLeft = Offset(x, y))
+}
+
+/**
+ * Titik bantu objek: lingkaran berwarna sama dengan kotak, berisi nomor objek.
+ * Warna kotak dipakai ulang supaya tidak ada pemetaan warna kedua yang bisa
+ * berbeda dari kotaknya.
+ */
+private fun DrawScope.drawMarker(
+    measurer: TextMeasurer,
+    text: String?,
+    center: Offset,
+    color: Color,
+    highlighted: Boolean,
+) {
+    val radius = (if (highlighted) 11.dp else 9.dp).toPx()
+    drawCircle(Color.Black.copy(alpha = 0.85f), radius = radius + 1.5.dp.toPx(), center = center)
+    drawCircle(color, radius = radius, center = center)
+    drawCircle(Color.White, radius = radius, center = center, style = Stroke(1.5.dp.toPx()))
+    if (text != null) {
+        val layout = measurer.measure(
+            text = text,
+            style = TextStyle(fontSize = 10.sp, color = Color.Black),
+        )
+        drawText(
+            textLayoutResult = layout,
+            topLeft = Offset(
+                center.x - layout.size.width / 2f,
+                center.y - layout.size.height / 2f,
+            ),
+        )
+    }
+}
+
+/** Stable label-based colors independent of model label order. */
+internal fun detectionClassColor(label: String): Color {
+    val normalized=label.lowercase().filter { it.isLetterOrDigit() }
+    return when {
+        normalized.contains("organik") && !normalized.contains("anorganik") -> Color(0xFF69F0AE)
+        normalized.contains("plastik") || normalized.contains("plastic") -> Color(0xFF40C4FF)
+        normalized.contains("kaleng") -> Color(0xFFFFD740)
+        normalized.contains("styrofoam") -> Color(0xFFEA80FC)
+        normalized.contains("kaca") || normalized.contains("glass") -> Color(0xFF64FFDA)
+        normalized.contains("kardus") || normalized.contains("karton") -> Color(0xFFFFAB40)
+        normalized.contains("besi") -> Color(0xFFFF5252)
+        else -> Color.hsv(((normalized.hashCode().toLong() and 0x7fffffff) % 360).toFloat(),0.65f,1f)
+    }
 }
