@@ -25,6 +25,13 @@ class CameraOverlaySurfaceTest {
         }
     }
 
+    @Test
+    fun summaryWhiteText_overBrightestCamera_meetsWcagAa() {
+        val background = 1.0 - SessionSummaryScrimAlpha
+        val contrast = 1.05 / (linear(background) + 0.05)
+        assertTrue("Summary text contrast $contrast is below WCAG AA", contrast >= 4.5)
+    }
+
     private fun linear(channel: Double): Double =
         if (channel <= 0.04045) channel / 12.92 else ((channel + 0.055) / 1.055).pow(2.4)
 }

@@ -17,11 +17,13 @@ import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 
 /** Black tint bounds the worst-case white-camera background independently of blur support. */
 internal const val CameraOverlayScrimAlpha = 0.64f
+internal const val SessionSummaryScrimAlpha = 0.54f
 
 /** Only the sampled image is blurred; labels and controls are drawn in a separate layer. */
 @Composable
@@ -29,6 +31,8 @@ internal fun CameraOverlaySurface(
     backdrop: ImageBitmap?,
     cameraBounds: Rect,
     modifier: Modifier = Modifier,
+    scrimAlpha: Float = CameraOverlayScrimAlpha,
+    blurRadius: Dp = 14.dp,
     content: @Composable BoxScope.() -> Unit,
 ) {
     var bounds by remember { mutableStateOf(Rect.Zero) }
@@ -36,7 +40,7 @@ internal fun CameraOverlaySurface(
         modifier = modifier.clip(RoundedCornerShape(12.dp))
             .onGloballyPositioned { bounds = it.boundsInRoot() },
     ) {
-        Canvas(Modifier.matchParentSize().blur(14.dp)) {
+        Canvas(Modifier.matchParentSize().blur(blurRadius)) {
             val image = backdrop
             if (image != null && cameraBounds.width > 0 && cameraBounds.height > 0 &&
                 bounds.width > 0 && bounds.height > 0
@@ -65,7 +69,7 @@ internal fun CameraOverlaySurface(
                 }
             }
         }
-        Box(Modifier.matchParentSize().background(Color.Black.copy(alpha = CameraOverlayScrimAlpha)))
+        Box(Modifier.matchParentSize().background(Color.Black.copy(alpha = scrimAlpha)))
         content()
     }
 }

@@ -34,6 +34,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.ViewList
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -272,6 +273,7 @@ private fun CameraStage(
     testMode: Boolean = false,
     savedSamples: Int = 0,
 ) {
+    var summaryVisible by rememberSaveable { mutableStateOf(true) }
     var backdrop by remember { mutableStateOf<ImageBitmap?>(null) }
     var cameraBounds by remember { mutableStateOf(Rect.Zero) }
     Box(
@@ -323,12 +325,30 @@ private fun CameraStage(
             backdrop = backdrop,
             cameraBounds = cameraBounds,
             modifier = Modifier.align(Alignment.TopStart)
-                .padding(start = 8.dp, end = 64.dp, top = 8.dp).fillMaxWidth(),
+                .padding(start = 8.dp, end = 64.dp, top = 8.dp)
+                .then(if (testMode || summaryVisible) Modifier.fillMaxWidth() else Modifier),
+            scrimAlpha = if (testMode) CameraOverlayScrimAlpha else SessionSummaryScrimAlpha,
+            blurRadius = if (testMode) 14.dp else 4.dp,
         ) {
             if (testMode) {
                 Text(stringResource(R.string.test_saved, savedSamples), color = Color.White,
                     modifier = Modifier.padding(12.dp), fontSize = 14.sp)
-            } else SessionSummaryBar(state = state)
+            } else if (summaryVisible) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
+                    Box(Modifier.weight(1f)) { SessionSummaryBar(state = state) }
+                    IconButton(onClick = { summaryVisible = false }) {
+                        Icon(Icons.Rounded.Close,
+                            contentDescription = stringResource(R.string.session_summary_hide),
+                            tint = Color.White)
+                    }
+                }
+            } else {
+                TextButton(onClick = { summaryVisible = true }) {
+                    Icon(Icons.Rounded.ViewList, contentDescription = null, tint = Color.White)
+                    Spacer(Modifier.width(6.dp))
+                    Text(stringResource(R.string.session_summary_show), color = Color.White)
+                }
+            }
         }
         Column(
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),

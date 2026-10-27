@@ -623,3 +623,13 @@ tidak dipaksa penuh: rasio sumber menentukan ukuran yang muat dalam batas
 tinggi/lebar, sehingga foto potret tampil lebih sempit tanpa memotong atas
 atau menimpa teks koreksi. Overlay dan sasaran ketuk mengikuti bingkai foto
 yang sama; kebijakan pratinjau kamera memenuhi layar tidak diterapkan ke Galeri.
+
+### Ringkasan sesi transparan dan dapat disembunyikan (27 Oktober 2026)
+Latar Ringkasan sesi memakai tint hitam54% (sebelumnya64%) dan blur4dp
+(sebelumnya14dp). Teks putih tetap terpisah dari blur dan diuji kontras4.5
+terhadap latar kamera putih. Tombol silang menyembunyikan metrik dan
+menyisakan tombol kecil “Tampilkan ringkasan”; ketuk untuk membuka kembali.
+Keadaan visibilitas dipertahankan saat rotasi melalui rememberSaveable.
+Tindakan ini hanya mengubah tampilan, tanpa menghentikan pemantauan atau
+mengubah metrik. Strip status bawah dan jumlah gambar Uji Model memakai
+tampilan sebelumnya.
