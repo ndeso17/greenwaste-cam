@@ -29,6 +29,7 @@
             <layer order="3" kind="detections" binding="detections.latest" stroke="solid" labels="class-and-confidence" stale="mark-explicitly"/>
             <layer order="4" kind="active-target" binding="target.active" stroke="thick-corners" label="TARGET"/>
         <statusGroup id="cameraStatusStrip" placement="camera-bottom-above-shutter" background="black-alpha-0.64-backdrop-blur-api31" layout="horizontal-scroll; circular-dot-plus-label; accessible-value-only; green-valid-gray-unconfigured-red-error; hairline-separated" requirement="UI-01 CAM-01 CAL-06 COM-01">
+          <status id="profileStatus" binding="models.activeProfileNameAndVersion" requirement="UI-01 MOD-03" wp="WP-14" empty="Belum ada profil"/>
           <status id="cameraStatus" binding="camera.status"/>
           <status id="calibrationStatus" binding="calibration.validity"/>
           <status id="usbStatus" binding="controller.connection"/>
@@ -77,6 +78,28 @@
 
     </content>
   </layout>
+  <modelsScreen id="modelsScreen" requirement="UI-02 MOD-01 MOD-02 MOD-03 MOD-04 MOD-05 MOD-06" wp="WP-07 WP-08 WP-09 WP-10" source="Design.md Layar Models 27 Oktober 2026">
+    <title binding="models.title"/>
+    <importAction id="modelsImport" intent="pick-json-profile-document" mime="application/json" binding="models.actionImport" errors="unreadable empty tooLarge invalidJson invalidProfile storageFailed"/>
+    <profileList id="modelsProfileList" binding="models.rows" empty="models.emptyTitle" loading="models.loading">
+      <item id="modelsProfileRow" key="profileId">
+        <status id="modelsProfileStatus" encoding="icon-and-text-plus-color" values="valid invalid unreadable"/>
+        <activeBadge id="modelsActiveBadge" text="models.activeBadge" showsWhen="row.isActive"/>
+        <labels id="modelsLabelList" binding="row.labels" unmappedMarker="models.labelUnmapped" noBinMarker="models.labelWithoutBin"/>
+        <problems id="modelsProblemList" binding="row.problems" format="models.problemLine"/>
+      </item>
+    </profileList>
+    <thresholdEditor id="modelsThreshold" binding="models.thresholdDrafts" shows="fraction-and-percent" commitAction="models.thresholdApply" problemsBinding="models.thresholdProblems"/>
+    <groupingToggle id="modelsGrouping" binding="row.groupingEnabled" note="models.groupingNote" behaviourDependency="B-07"/>
+    <activateAction id="modelsActivate" intent="set-active-profile" guard="ProfileSwitchGuard" reasons="machineRunning activeTargetPresent profileInvalid"/>
+    <states>
+      <state id="empty" presentation="specific-empty-text; never-fabricate-profiles"/>
+      <state id="loading" presentation="loading-text; no-placeholder-rows"/>
+      <state id="ready" presentation="profile-list-with-validation-status"/>
+      <state id="rejected" presentation="field-level-reason-inside-card"/>
+      <state id="blocked" presentation="named-blocker; grouping-behaviour-pending-B-07"/>
+    </states>
+  </modelsScreen>
   <modes>
     <mode id="monitoring" stage="3" startLabel="Mulai pemantauan" stopLabel="Hentikan pemantauan" startGuard="camera-profile-camera-calibration-related-faults-valid" actuatorCommands="forbidden">
       <unavailable components="robotPanel conveyorPanel targetDestination" text="Belum terintegrasi" controls="disabled"/>

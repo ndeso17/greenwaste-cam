@@ -43,7 +43,7 @@ Arah dependensi: `ui` → `domain` → `data` → `platform`
 | Paket | Isi | Komponen `Architecture.md` §3 | WP |
 |---|---|---|---|
 | `id.pemilah` | `MainActivity`, titik masuk aplikasi | — | WP-08 |
-| `id.pemilah.ui` | Compose screen, navigasi, overlay, `OperationUiState` | — | WP-09, 12, 13, 16, 20, 23, 35, WP-57 |
+| `id.pemilah.ui` | Compose screen, navigasi, overlay, `OperationUiState`, `ModelsUiState`, `ModelsScreen`, `ModelsSession` | — | WP-09, 12, 13, 16, 20, 23, 35, WP-57 |
 | `id.pemilah.domain.target` | `TargetSelector` | `TargetSelector` | WP-30, 31 |
 | `id.pemilah.domain.waste` | `WasteClass` (tujuh kelas resmi) | — | WP-50 |
 | `id.pemilah.domain.detection` | `Detection`, `Box` | `Detector` (keluaran) | WP-24, WP-54 |
@@ -52,8 +52,8 @@ Arah dependensi: `ui` → `domain` → `data` → `platform`
 | `id.pemilah.domain.operation` | `OperationGuard`, `StartDecision`, `MachineState` | `OperationGuard` | WP-32, 33, WP-51 |
 | `id.pemilah.domain.calibration` | `CalibrationValidity` | `CalibrationValidity` | WP-19 |
 | `id.pemilah.config` | `MachineConfig` (model + validasi) | — | WP-10 |
-| `id.pemilah.storage` | `ConfigStore`, `ConfigCodec`, `FileConfigStorage` | `ProfileRepository` (sebagian) | WP-11 |
-| `id.pemilah.model` | `ProfileValidator`, `ModelProfile`, `ProfileImporter`, `ModelSession` | `ProfileValidator`, `ProfileRepository` | WP-14, 15, 16, WP-53 |
+| `id.pemilah.storage` | `ConfigStore`, `ConfigCodec`, `FileConfigStorage`, `ContentProfileReader` | `ProfileRepository` (sebagian) | WP-11 |
+| `id.pemilah.model` | `ProfileValidator`, `ModelProfile`, `ProfileJson`, `ProfileRepository`, `ProfileSettings`, `ProfileSwitchGuard`, `ProfileImport`, `ProfileImporter`, `ModelSession` | `ProfileValidator`, `ProfileRepository` | WP-14, 15, 16, WP-53 |
 | `id.pemilah.calibration` | `CameraCalibration` | `CameraCalibration` | WP-17, 18 |
 | `id.pemilah.camera` | `CameraSource`, `FramePipeline` | `CameraSource`, `FramePipeline` | WP-21 |
 | `id.pemilah.inference` | `Detector`, `OutputDecoder` | `Detector`, `OutputDecoder` | WP-22 |
@@ -65,6 +65,13 @@ Arah dependensi: `ui` → `domain` → `data` → `platform`
 
 Nama berkas mengikuti deklarasi utama (`Styleguide.md` §1). Test berpasangan
 `X.kt` → `XTest.kt` pada `src/test/java/id/pemilah/...` dengan paket sama.
+
+Berkas layar Models (WP-07–WP-10): `ui/ModelsUiState.kt`, `ui/ModelsScreen.kt`,
+`ui/ModelsSession.kt`; berkas profil: `model/ProfileJson.kt`,
+`model/ProfileRepository.kt`, `model/ProfileSettings.kt`,
+`model/ProfileSwitchGuard.kt`, `model/ProfileImport.kt`,
+`storage/ContentProfileReader.kt`. Rencana impor ONNX
+`model/OnnxProfileImporter.kt` belum dibuat karena WP-12 terblokir B-02/B-17.
 
 Keadaan per 27 Oktober 2026: paket yang **belum** memiliki berkas adalah
 `domain.target`, `domain.tracking` (`Tracker` berada di `domain.detection`),

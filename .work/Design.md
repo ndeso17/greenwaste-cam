@@ -424,3 +424,50 @@ Ringkasan portrait vertikal memakai nama lengkap lima metrik; landscape memakai
 singkatan horizontal. Surface transparan gelap/blur dan preview penuh dipertahankan.
 Activity memakai FULL_SENSOR sehingga mengikuti posisi fisik HP, termasuk saat
 rotasi sistem dikunci. State pemantauan dan alur deteksi tidak diubah.
+
+
+## Layar Models — 27 Oktober 2026
+
+Bagian ini mencatat tata letak dan keadaan layar Models sesuai implementasi
+WP-07–WP-10 dan WP-14 pada `.work/Plan_ModelsScreen_27102026-102208.md`.
+
+### Komponen
+
+| Komponen | Isi | Sumber state |
+|---|---|---|
+| `ModelsProfileList` | Satu kartu per profil: nama, versi, status validasi (ikon + teks), label beserta kelas dan bak, alasan penolakan per bidang | `ModelsUiState.rows` |
+| `ModelsImportAction` | Tombol "Impor profil" dengan pemilih dokumen berfilter JSON; alasan kegagalan impor tampil di atas daftar | `ModelsSession.importProfile` |
+| `ModelsThresholdEditor` | Nilai awal dari profil tersimpan, ditampilkan sebagai pecahan dan persen, tombol "Terapkan ambang" | `ModelsUiState.thresholdDrafts` |
+| `ModelsGroupingToggle` | Sakelar per profil dengan keterangan bahwa perilaku kelompok belum ditetapkan (B-07) | `ModelsUiState.rows[].groupingEnabled` |
+| `ModelsActivateAction` | Tombol "Jadikan profil aktif" hanya pada profil yang lolos validasi dan belum aktif | `ModelsSession.setActiveProfile` |
+
+### Keadaan wajib
+
+| Keadaan | Tampilan |
+|---|---|
+| Kosong | Judul "Belum ada profil model." dan ajakan mengimpor berkas |
+| Memuat | Teks "Memuat daftar profil." tanpa daftar palsu |
+| Siap | Daftar profil dengan status masing-masing |
+| Gagal | Alasan per bidang pada kartu profil; impor gagal menampilkan kode alasannya |
+| Terblokir | Alasan pergantian profil ditolak (`ProfileSwitchBlockCode`) dan keterangan bahwa perilaku kelompok menunggu B-07 |
+
+Layar tidak boleh menampilkan profil, label, ambang, atau bak contoh. Daftar
+kosong berarti belum ada berkas profil di penyimpanan aplikasi.
+
+### Aksesibilitas
+
+- Status validasi selalu berupa ikon + teks, bukan warna saja (`Design.md` §7).
+- Penanda profil aktif berupa teks "Aktif" di samping ikon status.
+- Setiap kontrol memakai teks dari `strings.xml`; tidak ada label yang hanya
+  berupa ikon pada layar ini.
+- Target sentuh 48 dp mengikuti `minimumInteractiveComponentSize` pada tombol dan
+  sakelar Material yang dipakai.
+- Alasan penolakan ditulis lengkap di dalam kartu, tidak dipotong menjadi
+  singkatan.
+
+### Yang belum ditetapkan
+
+- Perilaku pengelompokan objek menunggu B-07; sakelar hanya menyimpan pilihan.
+- Nama bak sah dan alokasi tujuh kelas ke enam bak menunggu B-15/B-16; layar
+  menampilkan nama bak apa adanya dari berkas profil.
+- Impor dan verifikasi tensor berkas `.onnx` menunggu B-02/B-17 (WP-12).

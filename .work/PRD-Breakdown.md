@@ -42,12 +42,12 @@ Status di bawah adalah hasil pemeriksaan sendiri.
 
 | ID | Kebutuhan ringkas (§8.B) | Implementasi | Bukti | Status | Keterangan |
 |---|---|---|---|---|---|
-| MOD-01 | Impor profil ONNX | `model/ModelProfile.kt` (skema profil), `storage/ConfigCodec.kt` | `ConfigStoreTest` 14 test (round-trip konfigurasi/kalibrasi) | sebagian | Penyimpanan profil JSON dan pemilih berkas belum ada (WP-15/16) |
+| MOD-01 | Impor profil ONNX | `model/ProfileJson.kt`, `model/ProfileRepository.kt`, `model/ProfileImport.kt`, `storage/ContentProfileReader.kt`, `ui/ModelsScreen.kt` | `ProfileJsonTest` 11, `ProfileRepositoryTest` 12, `ProfileImportTest` 10 test; 228 unit test total | sebagian | Impor **JSON** profil selesai dan diuji; impor berkas `.onnx` belum (WP-12, tertahan B-02/B-17). Pemilih dokumen pada perangkat belum diuji (WP-13) |
 | MOD-02 | Validasi kompatibilitas, tolak dengan alasan | `model/ProfileValidator.kt` | `ProfileValidatorTest` 14 test, termasuk penolakan label gabungan `Kaleng`+`Besi` | selesai | Butir 1–6 `Architecture.md` §6 terjaga |
-| MOD-03 | Pergantian profil hanya saat berhenti & target kosong | `domain/operation/OperationGuard.kt` (`MachineState`) | `OperationGuardTest` 15 test | sebagian | Guard state ada; jalur UI/`ModelSession` belum |
-| MOD-04 | Ambang keyakinan per profil | `model/ModelProfile.kt` (`confidenceThreshold` + validasi rentang) | `ProfileValidatorTest` | sebagian | Slider dan penyimpanan per profil belum (WP-16) |
+| MOD-03 | Pergantian profil hanya saat berhenti & target kosong | `model/ProfileSwitchGuard.kt`, `ui/ModelsSession.kt`, `ui/ModelsScreen.kt` | `ProfileSwitchGuardTest` 8, `ModelsSessionTest` 12 test | sebagian | Guard + aksi UI selesai; masukan status berjalan dari layar Operasi belum dibagikan sehingga penolakan "sedang berjalan" baru terbukti lewat test |
+| MOD-04 | Ambang keyakinan per profil | `model/ProfileSettings.kt`, `ui/ModelsUiState.kt`, `ui/ModelsScreen.kt` | `ProfileSettingsTest` 11, `ModelsUiStateTest` 17, `ModelsSessionTest` 12 test | sebagian | Penyunting dan penyimpanan per profil selesai; nilai tetap terbaca setelah aplikasi ditutup baru diuji di repositori, bukan di perangkat (WP-13) |
 | MOD-05 | Pemetaan kelas aktif ke bak | `domain/config/BinMapping.kt` | `BinMappingTest` 10 test (bak 1–3 kiri, 4–6 kanan, kelas tanpa bak memblokir) | selesai | Nilai alokasi kelas menunggu B-16 |
-| MOD-06 | Aturan pengambilan kelompok per profil | `ModelProfile.groupingEnabled` | — | belum | Perilaku kelompok WP-41, tertahan B-07 |
+| MOD-06 | Aturan pengambilan kelompok per profil | `ModelProfile.groupingEnabled`, `model/ProfileSettings.kt`, `ui/ModelsScreen.kt` | `ProfileSettingsTest`, `ModelsUiStateTest` | sebagian | Sakelar tersimpan per profil dan diuji; perilaku pengelompokan tetap tertahan B-07 dan layar menyatakannya |
 
 ## 4. Conveyor (CON-01–05)
 
@@ -99,8 +99,8 @@ Status di bawah adalah hasil pemeriksaan sendiri.
 
 | ID | Kebutuhan ringkas (`.work/PRD.md` §6.6–§6.7) | Implementasi | Bukti | Status | Keterangan |
 |---|---|---|---|---|---|
-| UI-01 | Operasi: pratinjau, deteksi, blok, target, status robot, kecepatan, mulai/hentikan | `ui/OperationScreen.kt` utuh (header kartu status, kamera, ringkasan, tiga panel, banner guard, kontrol bawah) | Build + `uiautomator` perangkat | sebagian | Kerangka lengkap; isi belum punya pemilik state nyata |
-| UI-02 | Models: impor profil, pilih model, ambang, aturan kelompok | Navigasi ada, layar belum | — | belum | Layar menampilkan "Belum dikonfigurasi" |
+| UI-01 | Operasi: pratinjau, deteksi, blok, target, status robot, kecepatan, mulai/hentikan | `ui/OperationScreen.kt` utuh (strip status termasuk profil, kamera, ringkasan, tiga panel, banner guard, kontrol bawah) | Build + `uiautomator` perangkat; `ModelsSessionTest` (label profil) | sebagian | Strip status kini menampilkan profil aktif; isi lain belum punya pemilik state nyata |
+| UI-02 | Models: impor profil, pilih model, ambang, aturan kelompok | `ui/ModelsScreen.kt`, `ui/ModelsUiState.kt`, `ui/ModelsSession.kt`, `ui/AppNavigation.kt` | `ModelsUiStateTest` 17, `ModelsSessionTest` 12, `ModelsSessionTest` label Operasi; build + lint | sebagian | Layar terbuka dari rail dan menampilkan daftar, impor JSON, ambang, sakelar, aktivasi. Belum: impor `.onnx`, uji portrait/landscape/teks 1,3×/pembaca layar (WP-13) |
 | UI-03 | Bot: pemetaan kelas → bak, robot aktif, bak terlayani | `BinMapping` (domain) ada; layar belum | `BinMappingTest` | belum | — |
 | UI-04 | Settings: dimensi, ruas, posisi robot, gripper, batas kecepatan | `MachineConfig` (domain) ada; layar belum | `MachineConfigTest` | belum | — |
 | UI-05 | Kalibrasi: kamera, encoder, base, sendi, area, posisi bak | Model kalibrasi ada; layar belum | `CameraCalibrationTest` | belum | — |
@@ -121,7 +121,7 @@ Status di bawah adalah hasil pemeriksaan sendiri.
 |---|---|---|---|---|---|
 | NFR-01 | Inferensi lokal di Android | — | — | belum | ONNX Runtime sudah menjadi dependensi (D-01) tetapi belum dipakai |
 | NFR-02 | UI responsif saat kamera + inferensi aktif | CameraX `lifecycle`, komponen Compose | — | sebagian | Inferensi belum ada; ambang FPS/latensi menunggu B-06 |
-| NFR-03 | Konfigurasi bertahan setelah aplikasi ditutup | `storage/ConfigStore.kt`, `storage/FileConfigStorage.kt` | `ConfigStoreTest` 14 test | sebagian | Logika + berkas ada; tutup paksa/buka ulang belum diverifikasi di perangkat |
+| NFR-03 | Konfigurasi bertahan setelah aplikasi ditutup | `storage/ConfigStore.kt`, `storage/FileConfigStorage.kt`, `model/ProfileRepository.kt` | `ConfigStoreTest` 16, `ProfileRepositoryTest` 12 test (termasuk sesi dibangun ulang) | sebagian | Profil dan profil aktif bertahan pada penyimpanan; tutup paksa/buka ulang pada perangkat belum diverifikasi (WP-13) |
 | NFR-04 | Perintah gerak punya identitas dan status tertelusur | — | — | belum | Bergantung COM-02/COM-03 |
 | NFR-05 | Gangguan kamera/model/USB/encoder ditampilkan dengan penyebab | Status kamera (`CameraStatusOverlay`), USB (`LinkState`), kalibrasi (`CalibrationValidity`) | `ControllerConnectionTest`, `CameraCalibrationTest` | sebagian | Model dan encoder belum punya jalur status |
 | NFR-06 | Penghentian darurat lewat perangkat keras | — (tombol aplikasi dinyatakan bukan E-stop) | — | tertahan | Dependensi fisik; aplikasi tidak dapat membuktikan |
@@ -139,7 +139,7 @@ Status di bawah adalah hasil pemeriksaan sendiri.
 | SC-06 | Robot sibuk tidak menerima siklus baru | tertahan | B-04/B-07 |
 | SC-07 | Objek terlewat bersirkulasi tanpa intervensi | belum | Tidak ada jalur siklus |
 | SC-08 | USB terputus menjalankan perilaku gangguan | sebagian | `markLost()` diuji; prosedur gangguan menunggu B-05 |
-| SC-09 | Model tidak kompatibel ditolak dengan penjelasan | selesai | `ProfileValidatorTest` (14 test), termasuk label gabungan |
+| SC-09 | Model tidak kompatibel ditolak dengan penjelasan | selesai | `ProfileValidatorTest` 14 test, `ProfileJsonTest` 11 test, `ProfileImportTest` 10 test |
 | SC-10 | Dua robot aktif: tidak ada penugasan ganda | tertahan | B-07 |
 | SC-11 | Kalibrasi berubah: konfigurasi terkait diperiksa sebelum operasi | selesai | `CalibrationInvalidationTest`, guard `CALIBRATION_NEEDS_CHECK` |
 
