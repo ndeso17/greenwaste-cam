@@ -14,6 +14,8 @@ berada di luar repo ini.
 - Peta implementasi per requirement: [`.work/PRD-Breakdown.md`](.work/PRD-Breakdown.md)
 - Kontrak kerja agen dan aturan commit: [`AGENTS.md`](AGENTS.md)
 
+Catatan rilis dan rencana berikutnya: [Changelog](CHANGELOG.md).
+
 ## Status saat ini
 
 Tahap 3 PRD (aplikasi kamera): **UI berjalan, logika domain siap, jalur
@@ -21,7 +23,7 @@ inferensi dan controller belum tersambung.**
 
 | Bagian | Keadaan |
 |---|---|
-| Layar operasi landscape (rail 6 menu, header status, pratinjau kamera, panel target/robot/conveyor, ringkasan sesi, banner guard, kontrol bawah) | Ada dan berjalan di perangkat |
+| Layar operasi portrait/landscape (kamera penuh, shutter overlay, status titik, ringkasan adaptif, panel kanan tersembunyi secara default) | Ada dan berjalan di perangkat |
 | Rail navigasi berikon + dapat diperkecil (232 dp ⇄ 72 dp) | Ada, diuji unit test dan diukur di perangkat |
 | Pratinjau kamera (CameraX) | Berjalan |
 | Inferensi ONNX, decoder deteksi, filter area kerja | **Belum** — menunggu model tujuh kelas (B-02/B-17) dan geometri (B-03) |
@@ -96,7 +98,7 @@ Camera/
         │   ├── telemetry/    event + antrean lokal
         │   ├── usb/          kanal serial, CDC-ACM, status link
         │   └── camera/       pratinjau CameraX
-        └── test/java/id/pemilah/   unit test JVM (12 kelas, 143 test)
+        └── test/java/id/pemilah/   unit test JVM (145 test)
 ```
 
 Aturan arah dependensi: `ui` → `domain` → `data` → `platform`; tidak ada
