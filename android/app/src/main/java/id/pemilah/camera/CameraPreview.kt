@@ -3,7 +3,10 @@ package id.pemilah.camera
 import android.content.Context
 import android.graphics.Bitmap
 import android.os.Build
+import android.os.SystemClock
 import androidx.camera.core.CameraSelector
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.ImageProxy
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -22,8 +25,14 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import id.pemilah.inference.ArgbFrame
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import java.util.concurrent.Executors
+import java.util.concurrent.atomic.AtomicBoolean
+
+/** Jarak minimum antar-frame yang dikirim untuk klasifikasi (D-13). */
+private const val FRAME_INTERVAL_MS: Long = 400L
 
 /**
  * Status kamera yang ditampilkan ke operator (CAM-01, NFR-05). Setiap kegagalan
@@ -38,9 +47,13 @@ sealed interface CameraStatus {
 }
 
 /**
- * Pratinjau kamera CameraX (D-01). Komponen ini hanya membuka/menutup kamera dan
- * melaporkan status; inferensi, overlay, dan pemilihan target bukan tugasnya
- * (Architecture.md §3).
+ * Pratinjau kamera CameraX (D-01). Komponen ini membuka/menutup kamera,
+ * melaporkan status, dan menyalurkan frame ke [onFrame] bila pemanggil
+ * menghendaki inferensi. Keputusan inferensi dan isi hasilnya bukan tugas
+ * komponen ini (Architecture.md §3, D-13).
+ *
+ * `ImageAnalysis` hanya terpasang saat [onFrame] tidak `null`, sehingga tidak ada
+ * frame yang diproses diam-diam ketika pemantauan berhenti.
  */
 @Composable
 fun CameraPreview(
@@ -48,6 +61,7 @@ fun CameraPreview(
     modifier: Modifier = Modifier,
     onStatusChange: (CameraStatus) -> Unit = {},
     onBackdropFrame: ((Bitmap) -> Unit)? = null,
+    onFrame: ((ArgbFrame) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -88,7 +102,7 @@ fun CameraPreview(
         }
     }
 
-    DisposableEffect(hasPermission, lifecycleOwner) {
+    DisposableEffect(hasPermission, lifecycleOwner, onFrame != null) {
         var provider: ProcessCameraProvider? = null
         val future = if (hasPermission) ProcessCameraProvider.getInstance(context) else null
         future?.addListener(
@@ -108,7 +122,31 @@ fun CameraPreview(
                 } else {
                     runCatching {
                         cameraProvider.unbindAll()
-                        cameraProvider.bindToLifecycle(lifecycleOwner, selector, preview)
+                        val useCases = buildList {
+                            add(preview)
+                            if (onFrame != null) {
+                                add(
+                                    ImageAnalysis.Builder()
+                                        .setBackpressureStrategy(
+                                            ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST,
+                                        )
+                                        .setOutputImageFormat(
+                                            ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888,
+                                        )
+                                        .build()
+                                        .also { analysis ->
+                                            analysis.setAnalyzer(analyzerExecutor) { image ->
+                                                analyzeFrame(image, onFrame)
+                                            }
+                                        },
+                                )
+                            }
+                        }
+                        cameraProvider.bindToLifecycle(
+                            lifecycleOwner,
+                            selector,
+                            *useCases.toTypedArray(),
+                        )
                         CameraStatus.Ready
                     }.getOrElse { error ->
                         CameraStatus.Failed(error.message ?: error::class.java.simpleName)
@@ -128,3 +166,47 @@ fun CameraPreview(
         modifier = modifier,
     )
 }
+
+/**
+ * Pemroses frame latar untuk `ImageAnalysis` (D-13).
+ *
+ * Aturan yang dijaga:
+ * - `ImageProxy` selalu ditutup, termasuk saat frame dilewati, supaya kamera
+ *   tidak berhenti karena buffer penuh.
+ * - Hanya satu frame dikirim pada satu waktu; frame berikutnya dilewati sampai
+ *   pemanggil selesai. Ini mencegah antrean inferensi menumpuk di perangkat
+ *   lambat.
+ * - Jarak minimum [FRAME_INTERVAL_MS] membatasi beban CPU; ResNet18 pada CPU
+ *   perangkat tidak mampu memproses setiap frame.
+ */
+private fun analyzeFrame(image: ImageProxy, onFrame: ((ArgbFrame) -> Unit)?) {
+    image.use { proxy ->
+        if (onFrame == null) return
+        val plane = proxy.planes.firstOrNull() ?: return
+        val now = SystemClock.elapsedRealtime()
+        if (now - lastFrameAt < FRAME_INTERVAL_MS) return
+        if (!frameBusy.compareAndSet(false, true)) return
+        lastFrameAt = now
+        val frame = try {
+            RgbaConversion.toArgbFrame(
+                bytes = plane.buffer.let { buffer ->
+                    ByteArray(buffer.remaining()).also { buffer.get(it) }
+                },
+                width = proxy.width,
+                height = proxy.height,
+                rowStride = plane.rowStride,
+                pixelStride = plane.pixelStride,
+            )
+        } finally {
+            // Frame yang gagal dikonversi tidak boleh menahan status sibuk.
+            frameBusy.set(false)
+        }
+        if (frame == null) return
+        onFrame(frame)
+        frameBusy.set(false)
+    }
+}
+
+private var lastFrameAt: Long = 0L
+private val frameBusy = AtomicBoolean(false)
+private val analyzerExecutor = Executors.newSingleThreadExecutor()
