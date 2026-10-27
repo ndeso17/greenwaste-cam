@@ -89,8 +89,10 @@ fun AppNavigation(
     var modelsState by remember(modelsSession) { mutableStateOf(modelsSession.load()) }
     var importProblems by remember { mutableStateOf(emptyList<ModelImportProblem>()) }
     var switchBlocks by remember { mutableStateOf(emptyList<ProfileSwitchBlock>()) }
+    var deleteResult by remember { mutableStateOf<ModelsDeleteUi?>(null) }
 
     fun applyOutcome(outcome: ModelsSessionOutcome) {
+        val previousRows = modelsState.rows
         modelsState = outcome.state
         importProblems = outcome.messages
             .filterIsInstance<ModelsSessionMessage.ImportRejected>()
@@ -98,6 +100,20 @@ fun AppNavigation(
         switchBlocks = outcome.messages
             .filterIsInstance<ModelsSessionMessage.SwitchRejected>()
             .flatMap { it.blocks }
+        // Nama model diambil dari daftar sebelum penghapusan: sesudah dihapus
+        // barisnya sudah tidak ada, sedangkan pesan tetap harus menyebut model.
+        deleteResult = outcome.messages.firstNotNullOfOrNull { message ->
+            when (message) {
+                is ModelsSessionMessage.ProfileDeleted -> ModelsDeleteUi.Deleted(
+                    name = previousRows.firstOrNull { it.profileId == message.profileId }
+                        ?.let { it.name ?: it.fileName }
+                        ?: message.profileId,
+                )
+
+                is ModelsSessionMessage.DeleteFailed -> ModelsDeleteUi.Failed(message.detail)
+                else -> null
+            }
+        }
     }
     // rememberSaveable: lipat tidak berubah saat konfigurasi ulang (D-UI-02 butir 5).
     // Boolean disimpan langsung karena Compose dapat menyimpan tipe primitif tanpa
@@ -143,6 +159,10 @@ fun AppNavigation(
                         ),
                     )
                 },
+                onDeleteProfile = { profileId ->
+                    applyOutcome(modelsSession.deleteProfile(profileId))
+                },
+                deleteResult = deleteResult,
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -305,6 +325,8 @@ private fun DestinationContent(
     onThresholdTextChange: (String, String) -> Unit,
     onThresholdCommit: (String) -> Unit,
     onActivateProfile: (String) -> Unit,
+    onDeleteProfile: (String) -> Unit,
+    deleteResult: ModelsDeleteUi?,
     modifier: Modifier = Modifier,
 ) {
     if (destination == AppDestination.OPERATION) {
@@ -326,6 +348,8 @@ private fun DestinationContent(
             onThresholdTextChange = onThresholdTextChange,
             onThresholdCommit = onThresholdCommit,
             onActivateProfile = onActivateProfile,
+            onDeleteProfile = onDeleteProfile,
+            deleteResult = deleteResult,
             switchBlocks = switchBlocks,
         )
         return

@@ -19,11 +19,17 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.HelpOutline
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.WarningAmber
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -71,6 +77,8 @@ fun ModelsScreen(
     onThresholdTextChange: (String, String) -> Unit = { _, _ -> },
     onThresholdCommit: (String) -> Unit = {},
     onActivateProfile: (String) -> Unit = {},
+    onDeleteProfile: (String) -> Unit = {},
+    deleteResult: ModelsDeleteUi? = null,
     switchBlocks: List<ProfileSwitchBlock> = emptyList(),
 ) {
     val picker = rememberLauncherForActivityResult(
@@ -100,6 +108,17 @@ fun ModelsScreen(
         if (switchBlocks.isNotEmpty()) {
             SwitchBlocks(switchBlocks)
         }
+        deleteResult?.let { result ->
+            val text = when (result) {
+                is ModelsDeleteUi.Deleted -> stringResource(R.string.models_deleted, result.name)
+                is ModelsDeleteUi.Failed -> stringResource(R.string.models_delete_failed, result.detail)
+            }
+            Text(
+                text = text,
+                color = if (result is ModelsDeleteUi.Failed) Palette.danger else Palette.success,
+                fontSize = 13.sp,
+            )
+        }
         when {
             state.loading -> Text(
                 text = stringResource(R.string.models_loading),
@@ -113,6 +132,7 @@ fun ModelsScreen(
                 onThresholdTextChange = onThresholdTextChange,
                 onThresholdCommit = onThresholdCommit,
                 onActivateProfile = onActivateProfile,
+                onDeleteProfile = onDeleteProfile,
             )
         }
     }
@@ -205,6 +225,7 @@ private fun ModelsList(
     onThresholdTextChange: (String, String) -> Unit,
     onThresholdCommit: (String) -> Unit,
     onActivateProfile: (String) -> Unit,
+    onDeleteProfile: (String) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         state.activeAbsentReason?.let { reason ->
@@ -222,6 +243,7 @@ private fun ModelsList(
                     onThresholdTextChange = onThresholdTextChange,
                     onThresholdCommit = onThresholdCommit,
                     onActivateProfile = onActivateProfile,
+                    onDeleteProfile = onDeleteProfile,
                 )
             }
         }
@@ -235,7 +257,9 @@ private fun ModelRow(
     onThresholdTextChange: (String, String) -> Unit,
     onThresholdCommit: (String) -> Unit,
     onActivateProfile: (String) -> Unit,
+    onDeleteProfile: (String) -> Unit,
 ) {
+    var confirmDelete by remember { mutableStateOf(false) }
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -311,7 +335,58 @@ private fun ModelRow(
                 Text(text = stringResource(R.string.models_action_activate))
             }
         }
+        // Hapus selalu tersedia, termasuk untuk profil rusak: operator harus dapat
+        // membersihkan impor yang salah. Konfirmasi wajib karena berkas model ikut
+        // terhapus dan tidak ada aksi urungkan (instruksi pengguna 27 Okt 2026).
+        TextButton(onClick = { confirmDelete = true }) {
+            Text(
+                text = stringResource(R.string.models_action_delete),
+                color = Palette.danger,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.SemiBold,
+            )
+        }
     }
+    if (confirmDelete) {
+        DeleteConfirmationDialog(
+            row = row,
+            onDismiss = { confirmDelete = false },
+            onConfirm = {
+                confirmDelete = false
+                onDeleteProfile(row.profileId)
+            },
+        )
+    }
+}
+
+/**
+ * Konfirmasi hapus model (instruksi pengguna 27 Oktober 2026).
+ *
+ * Dialog menyebut nama model dan menegaskan berkas model ikut terhapus, supaya
+ * operator tidak mengira hanya entri daftar yang dibersihkan.
+ */
+@Composable
+private fun DeleteConfirmationDialog(
+    row: ModelsProfileRow,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    val name = row.name ?: row.fileName
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(text = stringResource(R.string.models_delete_title)) },
+        text = { Text(text = stringResource(R.string.models_delete_body, name)) },
+        confirmButton = {
+            TextButton(onClick = onConfirm) {
+                Text(text = stringResource(R.string.models_delete_confirm), color = Palette.danger)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text(text = stringResource(R.string.models_delete_cancel))
+            }
+        },
+    )
 }
 
 /**

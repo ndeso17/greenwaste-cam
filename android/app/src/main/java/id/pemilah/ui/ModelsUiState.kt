@@ -200,6 +200,15 @@ data class ModelsLabelUi(
     val wasteClass: WasteClass?,
 )
 
+/**
+ * Hasil aksi hapus yang ditampilkan di layar Models (instruksi pengguna
+ * 27 Oktober 2026). Teks tetap milik `strings.xml`; tipe ini hanya membawa data.
+ */
+sealed interface ModelsDeleteUi {
+    data class Deleted(val name: String) : ModelsDeleteUi
+    data class Failed(val detail: String) : ModelsDeleteUi
+}
+
 internal fun ProfileJsonProblem.toUi(): ModelsProblemUi = ModelsProblemUi(
     field = field,
     code = when (reason) {

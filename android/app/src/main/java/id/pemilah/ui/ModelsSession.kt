@@ -6,6 +6,7 @@ import id.pemilah.model.ModelFileReader
 import id.pemilah.model.ModelImport
 import id.pemilah.model.ModelImportProblem
 import id.pemilah.model.ModelImportResult
+import id.pemilah.model.ProfileDeleteResult
 import id.pemilah.model.ProfileEditResult
 import id.pemilah.model.ProfileProblem
 import id.pemilah.model.ProfileRepository
@@ -187,6 +188,33 @@ class ModelsSession(
             row.version?.takeIf { it.isNotBlank() }?.let { version -> "$name $version" } ?: name
         }
 
+    /**
+     * Hapus profil beserta berkas modelnya (instruksi pengguna 27 Oktober 2026).
+     *
+     * Konfirmasi operator adalah tanggung jawab layar; sesi ini hanya menjalankan
+     * penghapusan yang sudah dikonfirmasi dan melaporkan hasil sebenarnya.
+     */
+    fun deleteProfile(profileId: String): ModelsSessionOutcome = when (
+        val result = repository.delete(profileId)
+    ) {
+        is ProfileDeleteResult.Deleted -> ModelsSessionOutcome(
+            state = load(),
+            messages = listOf(ModelsSessionMessage.ProfileDeleted(result.profileId)),
+        )
+
+        is ProfileDeleteResult.NotFound -> ModelsSessionOutcome(
+            state = load(),
+            messages = listOf(ModelsSessionMessage.ProfileNotFound(profileId)),
+        )
+
+        is ProfileDeleteResult.StorageFailed -> ModelsSessionOutcome(
+            state = load(),
+            messages = listOf(
+                ModelsSessionMessage.DeleteFailed(result.fileName ?: result.reason.name),
+            ),
+        )
+    }
+
     /** Profil aktif yang sah, atau `null`; dipakai layar lain tanpa menyimpan salinan. */
     fun activeProfile(): ActiveProfileState = repository.active()
 }
@@ -211,6 +239,12 @@ sealed interface ModelsSessionMessage {
 
     data class ThresholdSaved(val profileId: String) : ModelsSessionMessage
     data class GroupingSaved(val profileId: String, val enabled: Boolean) : ModelsSessionMessage
+
+    /** Profil dan berkas modelnya sudah tidak ada lagi (instruksi pengguna). */
+    data class ProfileDeleted(val profileId: String) : ModelsSessionMessage
+
+    /** Penghapusan gagal; berkas yang tersisa disebutkan apa adanya. */
+    data class DeleteFailed(val detail: String) : ModelsSessionMessage
     data class StorageFailed(val detail: String?) : ModelsSessionMessage
 }
 

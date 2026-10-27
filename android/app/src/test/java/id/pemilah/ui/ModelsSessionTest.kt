@@ -345,6 +345,78 @@ class ModelsSessionTest {
         assertEquals(ModelsProfileStatus.INVALID, outcome.state.rows.single().status)
     }
 
+    // --- Hapus model (instruksi pengguna 27 Oktober 2026) ----------------------
+
+    @Test
+    fun deleteProfile_removesRowAndModelFile() {
+        val storage = MemoryConfigStorage()
+        val session = session(storage)
+        val profileId = session.importSevenClasses()
+
+        val outcome = session.deleteProfile(profileId)
+
+        assertEquals(
+            listOf(ModelsSessionMessage.ProfileDeleted(profileId)),
+            messages(outcome),
+        )
+        assertTrue("daftar harus kosong: ${outcome.state.rows}", outcome.state.rows.isEmpty())
+        assertTrue("berkas model harus terhapus", storage.binaryFiles.isEmpty())
+    }
+
+    @Test
+    fun deleteProfile_activeModel_clearsOperationLabel() {
+        val storage = MemoryConfigStorage()
+        val session = session(storage)
+        val profileId = session.importSevenClasses()
+        session.setThreshold(profileId)
+        session.setActiveProfile(profileId, MachineState.Stopped, hasActiveTarget = false)
+        assertTrue(session.operationProfileLabel() != null)
+
+        val outcome = session.deleteProfile(profileId)
+
+        assertNull("layar Operasi harus kehilangan profil", session.operationProfileLabel(outcome.state))
+        assertEquals(
+            ActiveProfileState.None(ActiveProfileAbsentReason.NOT_SELECTED),
+            session.activeProfile(),
+        )
+    }
+
+    @Test
+    fun deleteProfile_leavesOtherModelsActive() {
+        val storage = MemoryConfigStorage()
+        val session = session(storage)
+        val first = session.importSevenClasses("satu.onnx")
+        // Impor kedua dilakukan langsung karena helper mengandaikan satu baris.
+        val secondOutcome = session.importModel(
+            "content://dua.onnx",
+            FakeReader("dua.onnx", onnxBytes),
+        )
+        val second = secondOutcome.state.rows.single { it.profileId != first }.profileId
+        session.setThreshold(second)
+        session.setActiveProfile(second, MachineState.Stopped, hasActiveTarget = false)
+
+        val outcome = session.deleteProfile(first)
+
+        assertEquals(
+            listOf(ModelsSessionMessage.ProfileDeleted(first)),
+            messages(outcome),
+        )
+        assertEquals(listOf(second), outcome.state.rows.map { it.profileId })
+        assertTrue(outcome.state.rows.single().isActive)
+    }
+
+    @Test
+    fun deleteProfile_unknownProfile_reportsNotFound() {
+        val session = session(MemoryConfigStorage())
+
+        val outcome = session.deleteProfile("tidak-ada")
+
+        assertEquals(
+            listOf(ModelsSessionMessage.ProfileNotFound("tidak-ada")),
+            messages(outcome),
+        )
+    }
+
     @Test
     fun storedProfileHelper_usesOfficialClasses() {
         // Penjaga agar fixture test tetap berupa model tujuh kelas resmi.

@@ -154,6 +154,13 @@
     <string name="models_reason_invalid_bin_name">nama bak kosong bukan berarti belum ditetapkan</string>
     <string name="models_reason_model_file_missing">berkas model tidak ada di penyimpanan aplikasi</string>
     <string name="models_action_activate">Jadikan model aktif</string>
+    <string name="models_action_delete">Hapus model</string>
+    <string name="models_delete_title">Hapus model ini?</string>
+    <string name="models_delete_body">Model \"%1$s\" beserta berkas .onnx-nya dihapus dari aplikasi. Tindakan ini tidak dapat dibatalkan.</string>
+    <string name="models_delete_confirm">Hapus</string>
+    <string name="models_delete_cancel">Batal</string>
+    <string name="models_deleted">Model \"%1$s\" dihapus.</string>
+    <string name="models_delete_failed">Model tidak dapat dihapus. Berkas yang tersisa: %1$s.</string>
     <string name="models_switch_running">Model tidak dapat diganti selama pemantauan berjalan.</string>
     <string name="models_switch_active_target">Model tidak dapat diganti selama masih ada target aktif.</string>
     <string name="models_switch_invalid_profile">Model tujuan tidak lolos validasi. Model lama tetap aktif.</string>
