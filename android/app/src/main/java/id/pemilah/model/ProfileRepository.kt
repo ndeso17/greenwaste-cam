@@ -108,6 +108,7 @@ class ProfileRepository(private val store: ConfigStore) {
                     profileId = decoded.profile.profileId,
                     jsonProblems = emptyList(),
                     validationProblems = validation.problems,
+                    profile = decoded.profile,
                 )
             }
         }
@@ -134,11 +135,20 @@ sealed interface StoredProfile {
 
     data class Usable(override val fileName: String, val profile: ModelProfile) : StoredProfile
 
+    /**
+     * Profil yang tidak dapat dipakai.
+     *
+     * [profile] terisi bila berkas berhasil di-decode tetapi gagal validasi,
+     * sehingga layar Models masih dapat menampilkan nama, label, dan pemetaannya
+     * beserta alasan penolakan. [profile] `null` berarti berkas tidak dapat
+     * dibaca sama sekali.
+     */
     data class Broken(
         override val fileName: String,
         val profileId: String,
         val jsonProblems: List<ProfileJsonProblem>,
         val validationProblems: List<ProfileProblem>,
+        val profile: ModelProfile? = null,
     ) : StoredProfile
 }
 

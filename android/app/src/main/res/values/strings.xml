@@ -119,4 +119,41 @@
     <string name="action_show_panels">Panel</string>
     <string name="action_stop_now">Berhenti</string>
     <string name="action_toggle_panels">Panel mesin</string>
+
+    <!-- Models -->
+    <string name="models_title">Profil model</string>
+    <string name="models_loading">Memuat daftar profil.</string>
+    <string name="models_empty_title">Belum ada profil model.</string>
+    <string name="models_empty_hint">Impor berkas profil JSON dari penyimpanan perangkat untuk mulai memakai layar ini.</string>
+    <string name="models_name_unreadable">Nama profil tidak dapat dibaca</string>
+    <string name="models_version">Versi %1$s</string>
+    <string name="models_active_badge">Aktif</string>
+    <string name="models_status_valid">Lolos validasi.</string>
+    <string name="models_status_invalid">Ditolak validasi.</string>
+    <string name="models_status_unreadable">Berkas tidak dapat dibaca.</string>
+    <string name="models_labels_title">Label dan pemetaan kelas</string>
+    <string name="models_label_unmapped">%1$s — belum dipetakan ke kelas resmi</string>
+    <string name="models_label_without_bin">%1$s → %2$s — bak belum ditetapkan</string>
+    <string name="models_label_with_bin">%1$s → %2$s — bak %3$s</string>
+    <string name="models_problem_field_unknown">tanpa nama bidang</string>
+    <string name="models_problem_line">%1$s: %2$s</string>
+    <string name="models_reason_json_invalid">berkas bukan JSON profil yang sah</string>
+    <string name="models_reason_missing_field">bidang wajib tidak ada pada berkas</string>
+    <string name="models_reason_unknown_schema_version">versi skema tidak dikenali</string>
+    <string name="models_reason_invalid_value">nilai tidak dikenali</string>
+    <string name="models_reason_unknown_waste_class">kelas di luar tujuh kelas resmi</string>
+    <string name="models_reason_no_labels">profil tidak memuat label</string>
+    <string name="models_reason_duplicate_label">label ganda pada profil</string>
+    <string name="models_reason_label_not_mapped">label belum dipetakan ke kelas resmi</string>
+    <string name="models_reason_mapping_for_unknown_label">pemetaan menyebut label yang tidak ada pada profil</string>
+    <string name="models_reason_combined_label">label gabungan kaleng dan besi tidak dapat dipisahkan ke bak berbeda</string>
+    <string name="models_reason_no_location_output">keluaran model tidak menghasilkan lokasi objek</string>
+    <string name="models_reason_invalid_threshold">ambang keyakinan harus lebih besar dari 0 dan paling besar 1</string>
+    <string name="models_reason_invalid_input_size">ukuran masukan model tidak sah</string>
+    <string name="models_reason_unknown_normalization">normalisasi masukan tidak dikenali</string>
+    <string name="models_reason_class_not_in_profile">kelas ini tidak dipetakan oleh profil</string>
+    <string name="models_reason_invalid_bin_name">nama bak kosong bukan berarti belum ditetapkan</string>
+    <string name="models_active_not_selected">Belum ada profil aktif yang dipilih.</string>
+    <string name="models_active_file_missing">Profil aktif tercatat tetapi berkasnya tidak ada lagi.</string>
+    <string name="models_active_not_valid">Profil aktif tidak lagi lolos validasi dan perlu dipilih ulang.</string>
 </resources>
