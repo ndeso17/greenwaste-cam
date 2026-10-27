@@ -599,9 +599,14 @@ tengahnya dengan warna sama seperti kotaknya dan nomor objek; nomor itu sama
 dengan nomor pada daftar koreksi. Titik hanya menandai kotak, bukan tiap benda
 di dalamnya; bila satu kotak memuat beberapa benda, operator tetap mengoreksi
 per kotak. Di Galeri, ketukan pada titik memilih objek dan memusatkannya.
-Mode "Pilih jamak" menyediakan centang per gambar (seluruh objeknya ikut),
-centang per objek, Pilih semua, Kosongkan pilihan, "Labeli terpilih" dan
-"Hapus terpilih". Kedua aksi massal memakai dialog konfirmasi yang menyebut
-jumlah gambar dan objek; `Galeri` melaporkan bila hanya sebagian berhasil.
-Pilihan tidak mengubah makna koreksi: koreksi massal tetap tersimpan sebagai
-koreksi per objek dengan jam yang sama.
+Penandaan gambar dilakukan langsung dari daftar Galeri, tanpa masuk ke detail:
+centang selalu tampil pada setiap kartu, tekan lama kartu menandai atau
+membatalkan kartu itu dan sekaligus mengaktifkan mode pilih (ketuk biasa tetap
+membuka detail), dan header selalu menyediakan "Tandai semua" serta "Batalkan
+tandai". Detail gambar menyediakan centang per objek. Baris pilihan massal
+menampilkan jumlah gambar dan objek, Kosongkan, "Labeli terpilih", dan "Hapus
+terpilih". Kedua aksi massal memakai dialog konfirmasi yang menyebut jumlah
+gambar dan objek; di dalam dialog label, seluruh baris label dapat diketuk.
+`Galeri` melaporkan bila hanya sebagian berhasil. Pilihan tidak mengubah makna
+koreksi: koreksi massal tetap tersimpan sebagai koreksi per objek dengan jam
+yang sama.

@@ -1,5 +1,8 @@
 package id.pemilah.ui
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,6 +29,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -45,6 +49,7 @@ import java.util.Date
  * (instruksi pengguna 27 Oktober 2026). Semua I/O berjalan di [Dispatchers.IO];
  * Composable hanya menerima state dan lambda.
  */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun GalleryScreen(store: SampleStore, modifier: Modifier = Modifier) {
     var records by remember { mutableStateOf<List<SampleRecord>>(emptyList()) }
@@ -87,13 +92,28 @@ fun GalleryScreen(store: SampleStore, modifier: Modifier = Modifier) {
     val selectedSamples = selection.selectedSampleIds(records)
 
     Column(modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(stringResource(R.string.menu_gallery), style = MaterialTheme.typography.titleLarge)
-            TextButton(onClick = {
-                selectMode = !selectMode
-                if (!selectMode) selection = selection.clear()
-            }) {
-                Text(stringResource(if (selectMode) R.string.gallery_selection_cancel else R.string.gallery_selection_start))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.menu_gallery),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.weight(1f),
+            )
+            // Tandai semua langsung dari daftar, tanpa masuk ke detail gambar.
+            if (records.isNotEmpty()) {
+                TextButton(
+                    onClick = { selectMode = true; selection = selection.selectAll(records) },
+                    enabled = !busy,
+                ) { Text(stringResource(R.string.gallery_selection_all)) }
+            }
+            if (selectMode || !selection.isEmpty) {
+                TextButton(
+                    onClick = { selectMode = false; selection = selection.clear() },
+                    enabled = !busy,
+                ) { Text(stringResource(R.string.gallery_selection_cancel)) }
             }
         }
         error?.let { message ->
@@ -115,8 +135,9 @@ fun GalleryScreen(store: SampleStore, modifier: Modifier = Modifier) {
             }
         }
         if (busy) LinearProgressIndicator(Modifier.fillMaxWidth())
+        val selectionActive = selectMode || !selection.isEmpty
         if (selected == null) {
-            if (selectMode) {
+            if (selectionActive) {
                 BatchBar(
                     sampleCount = selectedSamples.size,
                     objectCount = selectedObjectCount,
@@ -126,6 +147,9 @@ fun GalleryScreen(store: SampleStore, modifier: Modifier = Modifier) {
                     onLabel = { labelTargets = selection.correctionTargets(records) },
                     onDelete = { pendingDelete = selectedSamples },
                 )
+            }
+            if (selectionActive) {
+                Text(stringResource(R.string.gallery_selection_hint), style = MaterialTheme.typography.bodySmall)
             }
             Text(stringResource(R.string.gallery_reference_note), style = MaterialTheme.typography.bodySmall)
             Text(stringResource(R.string.gallery_similarity, (threshold * 100).toInt()))
@@ -142,18 +166,36 @@ fun GalleryScreen(store: SampleStore, modifier: Modifier = Modifier) {
                 items(records, key = { it.id }) { record ->
                     val checked = selection.isSampleSelected(record.id)
                     OutlinedCard(
-                        onClick = {
-                            if (selectMode) selection = selection.toggleSample(record.id) else selectedId = record.id
-                        },
-                        modifier = Modifier.fillMaxWidth(),
+                        // Tekan lama = tandai kartu ini (masuk mode pilih), ketuk = buka
+                        // detail. Saat mode pilih aktif, ketuk kartu menandai/batal.
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .combinedClickable(
+                                onClick = {
+                                    if (selectionActive) {
+                                        selectMode = true
+                                        selection = selection.toggleSample(record.id)
+                                    } else {
+                                        selectedId = record.id
+                                    }
+                                },
+                                onLongClick = {
+                                    selectMode = true
+                                    selection = selection.toggleSample(record.id)
+                                },
+                            ),
                     ) {
                         Row(Modifier.padding(12.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            if (selectMode) {
-                                Checkbox(
-                                    checked = checked,
-                                    onCheckedChange = { selection = selection.toggleSample(record.id) },
-                                )
-                            }
+                            // Centang selalu tampil: sasaran tandai yang jelas tanpa
+                            // harus menekan lama atau masuk ke detail.
+                            Checkbox(
+                                checked = checked,
+                                onCheckedChange = {
+                                    selectMode = true
+                                    selection = selection.toggleSample(record.id)
+                                },
+                                enabled = !busy,
+                            )
                             GalleryImage(store, record, Modifier.width(100.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(
@@ -306,7 +348,16 @@ private fun BatchLabelDialog(
                 Text(stringResource(R.string.gallery_batch_label_body, applicable.size, targets.size))
                 LazyColumn {
                     items(labels) { label ->
-                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        // Seluruh baris dapat diketuk, bukan hanya lingkar radio:
+                        // sasaran sentuh kecil membuat label mudah salah pilih.
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { draft = label }
+                                .padding(vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
                             androidx.compose.material3.RadioButton(
                                 selected = draft == label,
                                 onClick = { draft = label },

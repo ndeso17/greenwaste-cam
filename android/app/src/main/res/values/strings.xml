@@ -237,11 +237,11 @@
     <string name="gallery_confirm_prediction">Konfirmasi prediksi</string>
     <string name="gallery_object_hint">Nomor dan titik berwarna pada gambar menunjukkan objek yang sedang dikoreksi.</string>
     <string name="gallery_object_number">Objek %1$d · %2$s · model %3$d%%</string>
-    <string name="gallery_selection_start">Pilih jamak</string>
-    <string name="gallery_selection_cancel">Selesai memilih</string>
+    <string name="gallery_selection_hint">Tekan lama kartu atau centang kotaknya untuk menandai gambar. Ketuk kartu membuka detail.</string>
+    <string name="gallery_selection_cancel">Batalkan tandai</string>
     <string name="gallery_selection_count">%1$d gambar, %2$d objek terpilih</string>
-    <string name="gallery_selection_all">Pilih semua</string>
-    <string name="gallery_selection_clear">Kosongkan pilihan</string>
+    <string name="gallery_selection_all">Tandai semua</string>
+    <string name="gallery_selection_clear">Kosongkan</string>
     <string name="gallery_batch_label">Labeli terpilih</string>
     <string name="gallery_batch_delete">Hapus terpilih</string>
     <string name="gallery_batch_label_title">Labeli objek terpilih</string>
