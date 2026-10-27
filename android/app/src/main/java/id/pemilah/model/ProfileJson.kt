@@ -1,6 +1,7 @@
 package id.pemilah.model
 
 import id.pemilah.domain.waste.WasteClass
+import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.MissingFieldException
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
@@ -51,6 +52,11 @@ object ProfileJson {
         OutputFormat.CLASSIFICATION_ONLY to "classification_only",
     )
 
+    // `MissingFieldException.missingFields` masih bertanda eksperimental pada
+    // kotlinx-serialization 1.7.3, tetapi justru itu yang memberi nama field
+    // wajib yang hilang alih-alih pesan bebas. Opt-in dinyatakan di sini, bukan
+    // di seluruh modul.
+    @OptIn(ExperimentalSerializationApi::class)
     fun decode(text: String): ProfileDecodeResult {
         val dto = try {
             json.decodeFromString(ProfileDto.serializer(), text)

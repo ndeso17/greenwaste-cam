@@ -153,6 +153,13 @@
     <string name="models_reason_unknown_normalization">normalisasi masukan tidak dikenali</string>
     <string name="models_reason_class_not_in_profile">kelas ini tidak dipetakan oleh profil</string>
     <string name="models_reason_invalid_bin_name">nama bak kosong bukan berarti belum ditetapkan</string>
+    <string name="models_action_import">Impor profil</string>
+    <string name="models_import_unreadable">Berkas profil tidak dapat dibaca. Pilih berkas lain.</string>
+    <string name="models_import_empty">Berkas profil kosong.</string>
+    <string name="models_import_too_large">Berkas profil melebihi batas ukuran yang ditetapkan.</string>
+    <string name="models_import_invalid_json">Berkas bukan JSON profil yang sah. Profil lama tidak diubah.</string>
+    <string name="models_import_invalid_profile">Profil ditolak validasi. Profil lama tidak diubah.</string>
+    <string name="models_import_storage_failed">Profil gagal disimpan. Profil lama tidak diubah.</string>
     <string name="models_active_not_selected">Belum ada profil aktif yang dipilih.</string>
     <string name="models_active_file_missing">Profil aktif tercatat tetapi berkasnya tidak ada lagi.</string>
     <string name="models_active_not_valid">Profil aktif tidak lagi lolos validasi dan perlu dipilih ulang.</string>

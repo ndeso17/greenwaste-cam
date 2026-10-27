@@ -1,5 +1,7 @@
 package id.pemilah.ui
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -16,6 +18,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.HelpOutline
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.WarningAmber
+import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,6 +34,8 @@ import androidx.compose.ui.unit.sp
 import id.pemilah.Palette
 import id.pemilah.R
 import id.pemilah.model.ActiveProfileAbsentReason
+import id.pemilah.model.ProfileImportProblem
+import id.pemilah.model.ProfileImportProblemCode
 
 /**
  * Layar Models: daftar profil model tersimpan, label kelas, alasan penolakan,
@@ -44,12 +49,23 @@ import id.pemilah.model.ActiveProfileAbsentReason
  * - Tidak ada data contoh: layar kosong berarti belum ada profil (`Design.md` §6).
  * - Alasan penolakan berasal dari `ProfileProblem`/`ProfileJsonProblem` lewat
  *   [ModelsUiState]; layar tidak menyimpulkan sendiri sebab kegagalan.
+ * - Tombol impor hanya mengirim URI terpilih ke pemanggil; pembacaan berkas
+ *   dilakukan di luar Composable supaya tidak ada I/O pada frame komposisi
+ *   (`Styleguide.md` §4).
  */
 @Composable
 fun ModelsScreen(
     state: ModelsUiState,
+    onProfileFilePicked: (String) -> Unit,
     modifier: Modifier = Modifier,
+    importProblems: List<ProfileImportProblem> = emptyList(),
 ) {
+    val picker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        // `null` berarti operator membatalkan pemilih dokumen; itu bukan galat.
+        uri?.let { onProfileFilePicked(it.toString()) }
+    }
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -62,6 +78,12 @@ fun ModelsScreen(
             fontSize = 20.sp,
             fontWeight = FontWeight.SemiBold,
         )
+        Button(onClick = { picker.launch(PROFILE_MIME_TYPES) }) {
+            Text(text = stringResource(R.string.models_action_import))
+        }
+        if (importProblems.isNotEmpty()) {
+            ImportProblems(importProblems)
+        }
         when {
             state.loading -> Text(
                 text = stringResource(R.string.models_loading),
@@ -73,6 +95,32 @@ fun ModelsScreen(
             else -> ProfilesList(state)
         }
     }
+}
+
+/** Filter pemilih dokumen: hanya berkas JSON profil yang ditawarkan (UI-02). */
+private val PROFILE_MIME_TYPES = arrayOf("application/json")
+
+@Composable
+private fun ImportProblems(problems: List<ProfileImportProblem>) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        problems.forEach { problem ->
+            Text(
+                text = stringResource(problem.code.messageRes()),
+                color = Palette.danger,
+                fontSize = 13.sp,
+            )
+        }
+    }
+}
+
+@StringRes
+private fun ProfileImportProblemCode.messageRes(): Int = when (this) {
+    ProfileImportProblemCode.UNREADABLE_FILE -> R.string.models_import_unreadable
+    ProfileImportProblemCode.EMPTY_FILE -> R.string.models_import_empty
+    ProfileImportProblemCode.FILE_TOO_LARGE -> R.string.models_import_too_large
+    ProfileImportProblemCode.INVALID_JSON -> R.string.models_import_invalid_json
+    ProfileImportProblemCode.INVALID_PROFILE -> R.string.models_import_invalid_profile
+    ProfileImportProblemCode.STORAGE_FAILED -> R.string.models_import_storage_failed
 }
 
 @Composable
@@ -263,5 +311,5 @@ private fun ActiveProfileAbsentReason.toMessageRes(): Int = when (this) {
 @Preview(widthDp = 960, heightDp = 540)
 @Composable
 private fun ModelsScreenEmptyPreview() {
-    ModelsScreen(state = ModelsUiState())
+    ModelsScreen(state = ModelsUiState(), onProfileFilePicked = {})
 }
