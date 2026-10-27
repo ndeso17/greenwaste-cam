@@ -67,7 +67,7 @@ fun AppNavigation(
     // rememberSaveable: lipat tidak berubah saat konfigurasi ulang (D-UI-02 butir 5).
     // Boolean disimpan langsung karena Compose dapat menyimpan tipe primitif tanpa
     // Saver khusus; NavigationRailState tetap menjadi kontrak yang diuji.
-    var railExpanded by rememberSaveable { mutableStateOf(true) }
+    var railExpanded by rememberSaveable { mutableStateOf(NavigationRailState().expanded) }
 
     Row(modifier = modifier.fillMaxSize()) {
         NavigationRail(
@@ -232,7 +232,6 @@ private fun DestinationContent(
     if (destination == AppDestination.OPERATION) {
         OperationScreen(
             modifier = modifier,
-            onOpenModels = { onNavigate(AppDestination.MODELS) },
             onOpenHistory = { onNavigate(AppDestination.HISTORY) },
         )
         return

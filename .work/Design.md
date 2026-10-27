@@ -328,3 +328,44 @@ geometri/transformasi kamera (B-03), serta perilaku berhenti/gangguan mesin
 (B-05). Layout landscape dan posisi panel disetujui melalui D-UI-01; ukuran
 adaptif serta kelengkapan isi mengikuti bagian 4.1 dan 4.4. Tata letak harus diverifikasi pada perangkat nyata sebelum dianggap
 final.
+
+## Perbaikan panel kanan — 27 Oktober 2026
+
+Sumber: permintaan pengguna sesi ini dan foto UI terpotong. Panel kanan memiliki
+tombol “Sembunyikan panel” di atas area gulir. Target, Robot, dan Conveyor
+berada dalam satu area gulir vertikal dengan tinggi sisa yang dibatasi. Tombol
+tetap terjangkau pada semua posisi gulir. Saat ditutup, tombol “Panel” membuka
+kembali panel dan kamera memakai ruang yang tersedia. Keadaan lipat dipulihkan
+dengan rememberSaveable; posisi gulir dipertahankan selama lipat/buka. Kamera
+tetap terpasang dan kontrol operasi berada di luar gulir (UI-01, CAM-01, NFR-02).
+
+### Revisi lanjutan pengguna pada sesi yang sama
+Ringkasan Sesi kini satu baris ringkas transparan, tetap di atas body setelah
+header; metrik berupa label singkat dan nilai sebaris, detail makna tersedia
+pada deskripsi aksesibilitas. Baris dapat digulir horizontal jika tidak muat.
+Tidak ada kartu, latar berwarna, atau bingkai. Status/alasan start juga
+transparan dan ditempatkan paling atas dalam area gulir panel kanan. Status
+ikut disembunyikan bersama panel; kontrol Mulai/Hentikan tetap di bawah.
+Ketentuan ini menggantikan penempatan ringkasan di bawah kamera dan banner
+di atas kontrol pada §4, sesuai instruksi eksplisit pengguna 27 Oktober 2026.
+
+### Revisi header dan keadaan awal navigasi — instruksi pengguna sesi ini
+Hapus judul “Pemilah Objek” dan teks/pintasan profil dari header operasi.
+Header kini hanya menampilkan kartu kamera, kalibrasi, USB. Model tetap
+dapat diakses melalui tujuan Models pada navigasi. Rail awal tertutup
+(72 dp, ikon saja); toggle dan pemulihan state sesi tetap berlaku. Ini
+menggantikan ketentuan profil terlihat pada header dan default rail terbuka.
+
+### Revisi status mengambang — instruksi pengguna sesi ini
+Kamera, kalibrasi, dan USB kini berada dalam frame kamera, mengambang di bawah.
+Kelompok status transparan sepenuhnya: tanpa kartu, latar, atau border. Header
+atas dihapus. Status mempertahankan ikon, label, dan nilai terpisah; dapat
+digulir horizontal jika sempit. Ringkasan tetap di atas frame. Ini menggantikan
+seluruh penyajian status header pada §4 dan revisi sebelumnya.
+
+### Revisi akhir ringkasan sesi — instruksi pengguna sesi ini
+Ringkasan Sesi juga menjadi overlay transparan di bagian atas frame kamera,
+bukan baris di luar kamera. Status kamera/kalibrasi/USB mengambang di bawah.
+Kedua overlay tanpa latar; ruang kamera diperbesar. Batas atas menghormati
+status bar Android agar jam dan ikon sistem tidak bertumpuk dengan ringkasan.
+Ini menggantikan posisi ringkasan top-fixed-below-header pada revisi sebelumnya.

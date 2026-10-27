@@ -17,22 +17,22 @@ class NavigationRailStateTest {
     // --- Keadaan lipat -----------------------------------------------------
 
     @Test
-    fun `rail terbuka secara bawaan`() {
-        assertTrue(NavigationRailState().expanded)
+    fun `rail tertutup secara bawaan`() {
+        assertFalse(NavigationRailState().expanded)
     }
 
     @Test
-    fun `satu toggle menutup rail`() {
-        val tertutup = NavigationRailState().toggle()
+    fun `satu toggle membuka rail`() {
+        val terbuka = NavigationRailState().toggle()
 
-        assertFalse(tertutup.expanded)
+        assertTrue(terbuka.expanded)
     }
 
     @Test
-    fun `dua toggle membuka rail kembali`() {
+    fun `dua toggle menutup rail kembali`() {
         val kembali = NavigationRailState().toggle().toggle()
 
-        assertTrue(kembali.expanded)
+        assertFalse(kembali.expanded)
     }
 
     @Test

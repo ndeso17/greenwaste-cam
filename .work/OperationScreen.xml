@@ -7,7 +7,7 @@
   <scope>Spesifikasi visual; bukan kode Android, protokol, atau persetujuan stack.</scope>
   <bindings semantics="UI projections only" defaultWhenAbsent="Belum ada data"/>
   <layout flow="horizontal" safeInsets="respect-system-bars-and-display-cutouts">
-    <navigation id="navigationRail" placement="left" selected="operation" requirement="UI-01 UI-02 UI-03 UI-04 UI-05 UI-06 UI-07" wp="WP-09 WP-60 WP-61" decision="D-UI-02 D-05" collapsible="true" widthExpanded="232dp" widthCollapsed="72dp">
+    <navigation defaultState="collapsed" id="navigationRail" placement="left" selected="operation" requirement="UI-01 UI-02 UI-03 UI-04 UI-05 UI-06 UI-07" wp="WP-09 WP-60 WP-61" decision="D-UI-02 D-05" collapsible="true" widthExpanded="232dp" widthCollapsed="72dp">
       <toggle id="railToggle" placement="rail-header-row-aligned-with-appTitle; outside-scroll" intent="toggle-rail" icon="chevron-left-when-expanded chevron-right-when-collapsed" descriptionBinding="nav.collapseLabel nav.expandLabel" minimumTouchDp="48" requirement="UI-07"/>
       <item id="operation" label="Operasi" prdLabel="Kamera / Operasi" icon="rounded-photo-camera"/>
       <item id="models" label="Models" prdLabel="Model &amp; Kelas" icon="rounded-model-training"/>
@@ -18,15 +18,8 @@
       <state id="collapsed" shows="icons-only" hides="labels appTitle" keeps="contentDescription-of-full-label selected-indicator"/>
     </navigation>
     <content flow="vertical" placement="right-of-navigationRail">
-      <header id="statusHeader" placement="top">
-        <text id="appTitle" value="Pemilah Objek"/>
-        <profile id="activeProfile" binding="activeProfile.nameAndVersion" action="open-models" changeGuard="stopped-and-robot-ready"/>
-        <statusGroup id="headerStatusCard" placement="trailing" layout="single-rounded-card; icon-plus-label-above-value; hairline-separated" requirement="UI-01 CAM-01 CAL-06 COM-01">
-          <status id="cameraStatus" binding="camera.status"/>
-          <status id="calibrationStatus" binding="calibration.validity"/>
-          <status id="usbStatus" binding="controller.connection"/>
-        </statusGroup>
-      </header>
+
+
       <body flow="horizontal" sizing="camera-about-two-thirds-sidebar-about-one-third; adaptable-not-fixed">
         <column id="cameraColumn" placement="left" priority="largest">
           <camera id="cameraStage" requirement="CAM-01 CAM-02 CAM-03 CAM-04 CAM-06 CAL-01" wp="WP-17 WP-21 WP-22 WP-23 WP-35" fit="preserve-aspect" transform="shared-frame-rotation-crop-letterbox-calibration">
@@ -35,8 +28,12 @@
             <layer order="2" kind="blocks" binding="calibration.blocks" stroke="dashed" labels="configured-block-ids"/>
             <layer order="3" kind="detections" binding="detections.latest" stroke="solid" labels="class-and-confidence" stale="mark-explicitly"/>
             <layer order="4" kind="active-target" binding="target.active" stroke="thick-corners" label="TARGET"/>
-          </camera>
-          <summary id="sessionSummary" placement="below-camera" requirement="OUT-01 UI-06" wp="WP-34 WP-35">
+        <statusGroup id="cameraStatusStrip" placement="camera-bottom-floating" background="transparent" layout="horizontal-scroll; icon-plus-label-above-value; hairline-separated" requirement="UI-01 CAM-01 CAL-06 COM-01">
+          <status id="cameraStatus" binding="camera.status"/>
+          <status id="calibrationStatus" binding="calibration.validity"/>
+          <status id="usbStatus" binding="controller.connection"/>
+        </statusGroup>
+          <summary id="sessionSummary" placement="camera-top-floating" background="transparent" layout="compact-horizontal-scroll" requirement="OUT-01 UI-06" wp="WP-34 WP-35">
             <metric id="motionCompleted" label="Gerak selesai" binding="session.motionCompleted"/>
             <metric id="pickupVerified" label="Pengambilan terverifikasi" binding="session.pickupVerified"/>
             <metric id="pickupUnverified" label="Pengambilan belum terverifikasi" binding="session.pickupUnverified" tone="warning"/>
@@ -46,8 +43,12 @@
             <action id="openHistory" label="Riwayat" intent="open-history"/>
             <overflow policy="compact-or-scroll-summary; keep-operation-controls-visible"/>
           </summary>
+          </camera>
+
         </column>
-        <column id="machineSidebar" placement="right" flow="vertical" overflow="scroll-cards-only">
+        <column id="machineSidebar" placement="right" flow="vertical" overflow="bounded-vertical-scroll-cards-only" collapsible="true" state="saveable">
+          <action id="toggleMachineSidebar" label="Sembunyikan panel" collapsedLabel="Panel" placement="above-scroll" minimumTouchDp="48" intent="toggle-sidebar-camera-expands"/>
+          <banner id="guardBanner" placement="sidebar-scroll-top" background="transparent" visibleWhen="guard-failed-or-running" binding="operation.reasonsAndNextActions"/>
           <panel id="targetPanel" title="Target aktif" requirement="CAM-04" wp="WP-35">
             <field id="targetId" binding="target.id"/>
             <field id="targetClass" binding="target.classLabel"/>
@@ -69,7 +70,7 @@
           </panel>
         </column>
       </body>
-      <banner id="guardBanner" placement="above-controls" visibleWhen="guard-failed-or-fault-or-stale-warning" binding="operation.reasonsAndNextActions"/>
+
       <footer id="operationControls" placement="bottom-persistent" requirement="UI-01 COM-05" wp="WP-32 WP-33 WP-35">
         <action id="start" intent="start-mode" labelBinding="mode.startLabel" enabledWhen="stopped-and-active-mode-guard-passes"/>
         <action id="stop" intent="stop-mode" labelBinding="mode.stopLabel" enabledWhen="active-mode-can-be-stopped" tone="danger-outline" hardwareEmergencyStop="false"/>
@@ -114,7 +115,7 @@
     <rule>Enam menu PRD mengatasi label navigasi yang keliru pada render.</rule>
     <rule>Label tampilan rail mengikuti D-UI-02 (Operasi, Models, Bot, Settings, Kalibrasi, Logs) dan tidak mengganti requirement UI-01–UI-06.</rule>
     <rule>Rail wajib berikon dan dapat diperkecil; saat tertutup hanya ikon yang tampil, label penuh tetap tersedia sebagai deskripsi aksesibilitas (UI-07).</rule>
-    <rule>Perubahan profil hanya lewat Model &amp; Kelas dengan guard.</rule>
+    <rule>Kamera, kalibrasi, USB mengambang transparan di bagian bawah frame kamera; header atas dihapus; profil melalui Models.</rule>
     <rule>Hasil gerak tidak membuktikan hasil jepit; keberhasilan perlu verifikasi.</rule>
     <rule>Putus/pulih koneksi tidak otomatis memulai operasi kembali.</rule>
     <rule>Skema angka, blok, dan tujuan contoh bukan konfigurasi mesin sah.</rule>
