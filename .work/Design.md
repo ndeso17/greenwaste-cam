@@ -474,8 +474,26 @@ kosong berarti belum ada model di penyimpanan aplikasi.
 Catatan uji perangkat untuk tata letak kartu (portrait penuh, layar rendah perlu
 digulir, teks 1,3×, target sentuh ≥48 dp) berasal dari
 `.work/evidence/models-device.md` dan tetap berlaku karena struktur kartu tidak
-berubah bentuk. Bukti impor `.onnx` nyata dicatat terpisah pada
-`.work/evidence/models-onnx-import.md`.
+berubah bentuk.
+
+Bukti impor `.onnx` nyata pada `moto g57 power` (Android 16, 1080×2400 px, 330
+dpi) dicatat pada `.work/evidence/models-onnx-import.md` bagian WP-11 beserta
+tangkap layar di `.work/evidence/models-onnx-device/`:
+
+1. Impor `resnet18_model-7kelas.onnx` (44,71 MB) berhasil; kartu menampilkan
+   tujuh baris pemetaan label dan "Kelas di dalam model: 7".
+2. Ambang `0.6` disimpan, lalu "Jadikan model aktif" ditekan; kartu menandai
+   "Aktif".
+3. Setelah `am force-stop` dan dibuka ulang, layar Operasi menampilkan
+   `Profil: resnet18_model-7kelas resnet18-7kelas`.
+4. Berkas JSON ditolak dengan "Berkas bukan model ONNX (.onnx). Model lama tidak
+   diubah." dan daftar model tidak berubah.
+5. Impor berulang berkas yang sama membuat kartu kedua
+   `resnet18_model-7kelas (3)`; model lama beserta ambangnya tetap utuh.
+
+Temuan uji perangkat yang diperbaiki: metadata `names` berbentuk `repr` Python
+(kutip tunggal) ditolak pembaca metadata, sehingga impor pertama gagal walau
+model sah. Perbaikan dan test-nya dicatat pada berkas bukti tersebut.
 
 ### Yang belum ditetapkan
 

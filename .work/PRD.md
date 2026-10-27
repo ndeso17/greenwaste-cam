@@ -118,6 +118,14 @@ pada layar Models** — logika domainnya ada dan diuji, celah UI-nya dicatat pad
 `../.work/FINDINGS.md`. Inferensi pada frame kamera belum diimplementasikan dan
 bukan bagian dari perubahan ini.
 
+**Model utama prototipe (D-10, 27 Oktober 2026).** Model yang dipakai pengguna
+adalah ResNet18 **klasifikasi** tujuh kelas (masukan 224×224, keluaran
+`[batch, 7]`, tanpa kotak objek). Keluaran klasifikasi karena itu **diterima**
+oleh MOD-02, dan syarat "menghasilkan lokasi objek" berpindah ke pemasok kotak
+objek (deteksi) yang belum ada. Akibatnya model aktif belum dapat menghasilkan
+kandidat sampai deteksi tersedia; batas ini dicatat terbuka, bukan dinyatakan
+selesai.
+
 ### 6.3 Kalibrasi kamera (CAL-01, CAL-06)
 
 | ID | Kebutuhan | Kriteria terima |

@@ -55,13 +55,14 @@ disunting tangan; ia dihasilkan `ModelImport` dari berkas `.onnx` yang dipilih:
 
 | Field | Asal |
 |---|---|
-| `profileId`, `name` | nama berkas model tanpa akhiran `.onnx`, dijadikan bentuk aman berkas; bentrok nama diberi akhiran `-2`, `-3`, … sehingga impor tidak menimpa model lama |
+| `profileId` | nama berkas model tanpa akhiran `.onnx`, dijadikan bentuk aman berkas; bentrok nama diberi akhiran `-2`, `-3`, … sehingga impor tidak menimpa model lama |
+| `name` | nama berkas model apa adanya; impor berulang dengan nama sama diberi akhiran pembeda (`sampah (2)`) supaya dua kartu tidak tampak identik |
 | `version` | metadata `version` model; string kosong bila model tidak menuliskannya |
 | `modelFile` | `model-<profileId>.onnx`, salinan biner di penyimpanan internal aplikasi |
 | `labels` | metadata `names` model, urut indeks kelas |
 | `classMapping` | pencocokan nama label model ke tujuh kelas resmi (tidak peka huruf besar, hanya huruf/angka); label yang tidak cocok tidak dipetakan dan ditolak validator |
 | `input` | bentuk tensor masukan; `normalization` `scale_0_1` dan layout mengikuti posisi sumbu kanal |
-| `output` | bentuk tensor keluaran: `4 + jumlah kelas` → `yolo_v8`, `5 + jumlah kelas` → `yolo_v5`; `boxesNormalized` `false` karena keluaran mentah YOLO memakai koordinat piksel |
+| `output` | bentuk tensor keluaran: `4 + jumlah kelas` → `yolo_v8`, `5 + jumlah kelas` → `yolo_v5`, `[batch, jumlah kelas]` → `classification_only` (D-10); `boxesNormalized` `false` karena keluaran mentah YOLO memakai koordinat piksel |
 | `confidenceThreshold` | `0.0` = belum ditetapkan; operator yang menetapkan |
 | `groupingEnabled`, `binAssignment` | nilai netral saat impor; belum ada kendali pada layar Models |
 
@@ -80,6 +81,10 @@ Aturan validasi:
 9. `modelFile` wajib menunjuk berkas yang ada di penyimpanan aplikasi; profil
    yang berkas modelnya hilang dilaporkan `MODEL_FILE_MISSING` dan tidak dapat
    diaktifkan.
+10. `output.format` `classification_only` diterima (D-10); kebutuhan lokasi
+    objek menjadi tanggung jawab pemasok kotak objek (deteksi) yang belum ada,
+    sehingga model klasifikasi dapat diaktifkan tetapi belum menghasilkan
+    kandidat pada kamera.
 
 Nilai angka di atas adalah placeholder; nilai sah berasal dari model dan
 keputusan B-02.

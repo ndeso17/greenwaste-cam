@@ -103,15 +103,21 @@ pemetaan kelas ke bak.
 
 Validasi wajib menolak:
 
-1. Model tanpa keluaran lokasi objek.
-2. Jumlah label tidak sama dengan jumlah kelas keluaran.
-3. Ukuran input deklarasi tidak sama dengan tensor model.
-4. Versi skema tidak dikenal.
-5. Daftar kelas tidak dapat dipetakan ke tujuh kelas resmi PRD induk bagian 5.
-6. Label yang menggabungkan `Kaleng` dan `Besi` menjadi satu kelas.
+1. Jumlah label tidak sama dengan jumlah kelas keluaran.
+2. Ukuran input deklarasi tidak sama dengan tensor model.
+3. Versi skema tidak dikenal.
+4. Daftar kelas tidak dapat dipetakan ke tujuh kelas resmi PRD induk bagian 5.
+5. Label yang menggabungkan `Kaleng` dan `Besi` menjadi satu kelas.
 
-Butir 5 dan 6 berasal dari koreksi kelas 24 Oktober 2026; tanpanya aplikasi akan
+Butir 4 dan 5 berasal dari koreksi kelas 24 Oktober 2026; tanpanya aplikasi akan
 menerima profil yang tidak dapat memenuhi pemisahan bak.
+
+Bekas butir "model tanpa keluaran lokasi objek" **dicabut** oleh D-10 (27 Oktober
+2026): model utama prototipe adalah ResNet18 klasifikasi tujuh kelas. Keluaran
+`classification_only` diterima, dan kebutuhan kotak objek menjadi tanggung jawab
+pemasok deteksi (`Detector`) yang belum ada. Sampai pemasok itu tersedia, model
+klasifikasi aktif belum dapat menghasilkan kandidat; batas ini berlaku sebagai
+hambatan terbuka, bukan implementasi selesai.
 
 ## 7. Kontrak pesan ke controller
 
@@ -151,6 +157,12 @@ B-02 (model tujuh kelas), B-03 (geometri), B-04 (protokol), B-05 (gangguan dan
 pemulihan), B-06 (ambang numerik), B-08 (backend), B-14 (pemilik perhitungan
 lintasan), B-15 (definisi kelas), B-16 (alokasi kelas ke bak), serta bagian
 **perangkat sasaran** dari B-01 (stack sudah disetujui D-01).
+
+Setelah D-10, terbuka juga: sumber kotak objek untuk model klasifikasi
+(pemasok deteksi dan kontrak `OutputDecoder`, B-02) serta normalisasi masukan
+model klasifikasi (ResNet18 memakai rata-rata/simpangan ImageNet, sedangkan
+`Normalization` baru mengenal `scale_0_1`, `scale_minus_one_one`, dan `none`).
+Keduanya belum memengaruhi impor, tetapi menghalangi inferensi nyata.
 
 Komponen yang bergantung pada butir di atas tetap boleh dibuat kerangkanya,
 tetapi tidak boleh diisi angka, protokol, atau klaim hasil tanpa keputusan.
