@@ -117,6 +117,9 @@
     <string name="stage3_not_integrated">Belum terintegrasi pada tahap 3</string>
     <string name="action_hide_panels">Sembunyikan panel</string>
     <string name="action_show_panels">Panel</string>
+    <string name="guides_title">Garis bantu kamera</string>
+    <string name="guides_toggle">Tampilkan garis bantu</string>
+    <string name="guides_note">Garis pembagi tiga untuk membidik. Bukan area kerja hasil kalibrasi.</string>
     <string name="action_stop_now">Berhenti</string>
     <string name="action_toggle_panels">Panel mesin</string>
 

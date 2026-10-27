@@ -30,6 +30,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.Switch
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Tune
@@ -82,8 +83,11 @@ fun OperationScreen(
     onStop: () -> Unit = {},
 ) {
     var panelVisible by rememberSaveable { mutableStateOf(false) }
-    val panelScroll = rememberScrollState()
+    var panelScroll = rememberScrollState()
     var liveCameraStatus by remember { mutableStateOf<CameraStatus>(CameraStatus.Starting) }
+    // Garis bantu bidik aktif secara bawaan: tanpa garis, operator sulit
+    // menempatkan objek di tengah bidang pandang (instruksi pengguna 27 Okt 2026).
+    var guidesVisible by rememberSaveable { mutableStateOf(true) }
     val ui = (state ?: rememberDefaultOperationState()).copy(cameraStatus = liveCameraStatus)
     val blockers = StartGuardProjection.blockers(ui)
     BoxWithConstraints(modifier = modifier.fillMaxSize().safeDrawingPadding()) {
@@ -98,6 +102,7 @@ fun OperationScreen(
             onStop = onStop,
             cameraStatus = liveCameraStatus,
             onCameraStatusChange = { liveCameraStatus = it },
+            guidesVisible = guidesVisible,
             modifier = Modifier.fillMaxSize(),
         )
         if (panelVisible) {
@@ -112,6 +117,7 @@ fun OperationScreen(
                 if (blockers.isNotEmpty() || ui.isRunning) {
                     GuardBanner(blockers = blockers, isRunning = ui.isRunning, stage = ui.stage)
                 }
+                GuidesToggle(visible = guidesVisible, onVisibleChange = { guidesVisible = it })
                 TargetPanel(state = ui)
                 RobotPanel(state = ui)
                 ConveyorPanel(state = ui)
@@ -204,6 +210,7 @@ private fun CameraStage(
     onStop: () -> Unit,
     cameraStatus: CameraStatus,
     onCameraStatusChange: (CameraStatus) -> Unit,
+    guidesVisible: Boolean,
     modifier: Modifier = Modifier,
 ) {
     var backdrop by remember { mutableStateOf<ImageBitmap?>(null) }
@@ -231,6 +238,8 @@ private fun CameraStage(
             onStatusChange = onCameraStatusChange,
             onBackdropFrame = { backdrop = it.asImageBitmap() },
         )
+        // Garis bantu bidik: panduan visual, bukan area kerja terkalibrasi.
+        CameraGuidesOverlay(visible = guidesVisible)
         // Overlay hanya menggambar data yang benar-benar ada; saat ini belum ada
         // geometri terkalibrasi sehingga tidak ada kotak atau blok yang dikarang.
         DetectionOverlay(
@@ -269,9 +278,38 @@ private fun CameraStage(
     }
 }
 
+/**
+ * Sakelar garis bantu bidik. Ditempatkan di panel agar tidak menutupi pratinjau,
+ * dan menyebut dengan jelas bahwa garis ini bukan area kerja terkalibrasi
+ * (instruksi pengguna 27 Oktober 2026).
+ */
 @Composable
-private fun CameraStatusOverlay(
-    status: CameraStatus,
+private fun GuidesToggle(visible: Boolean, onVisibleChange: (Boolean) -> Unit) {
+    MachinePanel(title = stringResource(R.string.guides_title)) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.guides_toggle),
+                    color = Palette.onSurface,
+                    fontSize = 13.sp,
+                )
+                Text(
+                    text = stringResource(R.string.guides_note),
+                    color = Palette.onSurfaceMuted,
+                    fontSize = 11.sp,
+                )
+            }
+            Switch(checked = visible, onCheckedChange = onVisibleChange)
+        }
+    }
+}
+
+@Composable
+private fun CameraStatusOverlay(    status: CameraStatus,
     hasPermission: Boolean,
     onRequestPermission: () -> Unit,
 ) {
