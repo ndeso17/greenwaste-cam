@@ -63,4 +63,10 @@ enum class ProfileProblemReason {
     INVALID_CONFIDENCE_THRESHOLD,
     INVALID_INPUT_SIZE,
     UNKNOWN_NORMALIZATION,
+
+    /** Kelas yang disunting tidak dipetakan oleh label profil mana pun (MOD-05). */
+    CLASS_NOT_IN_PROFILE,
+
+    /** Nama bak kosong bukan berarti "belum ditetapkan"; yang benar adalah `null`. */
+    INVALID_BIN_NAME,
 }
