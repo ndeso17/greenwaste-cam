@@ -2,6 +2,8 @@ plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     id("org.jetbrains.kotlin.plugin.compose")
+    // Parser JSON profil model — D-08.
+    id("org.jetbrains.kotlin.plugin.serialization")
 }
 
 android {
@@ -48,6 +50,9 @@ dependencies {
     // Pustaka ikon Material — D-05. Versi mengikuti Compose BOM 2024.10.01 (tanpa
     // nomor versi), pola yang sama dengan project PHM.
     implementation("androidx.compose.material:material-icons-extended")
+    // Parser JSON berkas profil model — D-08. Hanya lapisan model/storage yang
+    // memakai; ConfigCodec tetap dipakai untuk konfigurasi mesin dan kalibrasi.
+    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     // CameraX 1.4.0 — D-01. CameraX hanya dipakai lapisan platform/camera.
     implementation("androidx.camera:camera-core:1.4.0")
     implementation("androidx.camera:camera-camera2:1.4.0")
