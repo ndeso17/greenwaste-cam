@@ -465,6 +465,24 @@ kosong berarti belum ada berkas profil di penyimpanan aplikasi.
 - Alasan penolakan ditulis lengkap di dalam kartu, tidak dipotong menjadi
   singkatan.
 
+### Catatan uji perangkat — 27 Oktober 2026
+
+Diuji pada `moto g57 power`, Android 16, 1080×2400 px, density 330 dpi
+(`.work/evidence/models-device.md`):
+
+- Portrait penuh: seluruh isi kartu tampil tanpa gulir.
+- Layar rendah (landscape tersimulasi 2400×1080): kartu profil lebih tinggi
+  daripada layar, sehingga bagian bawah kartu **perlu digulir**. Ini disengaja:
+  kartu tidak dipadatkan agar alasan penolakan tetap terbaca utuh. Karena itu
+  klaim "semua kontrol tampil tanpa gulir" tidak berlaku untuk layar rendah.
+- Teks 1,3×: seluruh teks tetap utuh; catatan kelompok membungkus dua baris.
+- Target sentuh terukur ≥48 dp pada field ambang (56,2 dp), tombol terapkan dan
+  sakelar (48,0 dp), serta item rail (48,5 dp).
+
+Keadaan wajib lain (memuat, gagal, terblokir) dibuktikan pada perangkat hanya
+untuk keadaan gagal-impor. Keadaan memuat dan terblokir baru terbukti pada unit
+test; uji perangkat lanjutan menyusul bila jalur tersebut dapat dipicu.
+
 ### Yang belum ditetapkan
 
 - Perilaku pengelompokan objek menunggu B-07; sakelar hanya menyimpan pilihan.
