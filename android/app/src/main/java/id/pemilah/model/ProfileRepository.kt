@@ -101,8 +101,46 @@ class ProfileRepository(private val store: ConfigStore) {
             is StoredProfile.Usable -> store.writeActiveProfileId(profileId).toWriteResult()
         }
 
-    private fun readStored(fileName: String): StoredProfile {
-        val text = store.readProfileFile(fileName)
+    /**
+     * Hapus profil beserta salinan berkas modelnya (instruksi pengguna
+     * 27 Oktober 2026).
+     *
+     * Aturan yang dijaga:
+     * - Penghapusan hanya berjalan atas permintaan operator; aplikasi tidak
+     *   pernah menghapus profil sendiri, termasuk profil rusak (`Rules.md` §2.2).
+     * - Bila profil yang dihapus sedang aktif, penanda profil aktif dikosongkan
+     *   sehingga `active()` menjadi [ActiveProfileAbsentReason.NOT_SELECTED],
+     *   bukan menunjuk profil yang sudah tidak ada.
+     * - Profil lain tidak tersentuh: daftar dibaca ulang dari penyimpanan
+     *   sesudah penghapusan.
+     */
+    fun delete(profileId: String): ProfileDeleteResult {
+        val fileName = fileNameFor(profileId)
+        val modelFile = modelFileNameFor(profileId)
+        val profileExisted = store.profileFileExists(fileName)
+        val modelExisted = store.modelFileExists(modelFile)
+        if (!profileExisted && !modelExisted) return ProfileDeleteResult.NotFound(profileId)
+
+        // Profil dihapus lebih dulu: selama berkas profil ada, berkas model
+        // dianggap masih dipakai. Urutan ini tidak meninggalkan profil yang
+        // menunjuk model yang sudah dihapus.
+        if (profileExisted && !store.deleteProfileFile(fileName)) {
+            return ProfileDeleteResult.StorageFailed(StoreProblemReason.WRITE_FAILED, fileName)
+        }
+        if (modelExisted && !store.deleteModelFile(modelFile)) {
+            // Profil sudah tidak ada; berkas model yatim tidak dirujuk siapa pun.
+            return ProfileDeleteResult.StorageFailed(StoreProblemReason.WRITE_FAILED, modelFile)
+        }
+        if (store.readActiveProfileId() == profileId) {
+            store.clearActiveProfileId()
+        }
+        return ProfileDeleteResult.Deleted(
+            profileId = profileId,
+            modelFileDeleted = modelExisted,
+        )
+    }
+
+    private fun readStored(fileName: String): StoredProfile {        val text = store.readProfileFile(fileName)
             ?: return StoredProfile.Broken(
                 fileName = fileName,
                 profileId = profileIdFrom(fileName),
@@ -227,8 +265,27 @@ sealed interface ProfileWriteResult {
     ) : ProfileWriteResult
 }
 
-/** Keadaan profil aktif; tidak pernah berupa galat bagi pemanggil. */
-sealed interface ActiveProfileState {
+/**
+ * Hasil penghapusan profil (instruksi pengguna 27 Oktober 2026).
+ *
+ * `Deleted` hanya dilaporkan bila berkas profil dan berkas model yang ada sudah
+ * tidak ada lagi; kegagalan penyimpanan dilaporkan apa adanya, bukan dianggap
+ * berhasil.
+ */
+sealed interface ProfileDeleteResult {
+    data class Deleted(val profileId: String, val modelFileDeleted: Boolean) : ProfileDeleteResult
+
+    /** Tidak ada berkas profil maupun berkas model untuk `profileId` itu. */
+    data class NotFound(val profileId: String) : ProfileDeleteResult
+
+    /** Penyimpanan menolak penghapusan [fileName]; sisa berkas dilaporkan apa adanya. */
+    data class StorageFailed(
+        val reason: StoreProblemReason,
+        val fileName: String? = null,
+    ) : ProfileDeleteResult
+}
+
+/** Keadaan profil aktif; tidak pernah berupa galat bagi pemanggil. */sealed interface ActiveProfileState {
     data class Selected(val profile: ModelProfile) : ActiveProfileState
 
     data class None(

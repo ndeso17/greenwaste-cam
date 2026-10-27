@@ -36,6 +36,16 @@ interface ConfigStorage {
     fun exists(name: String): Boolean
 
     /**
+     * Hapus berkas [name]; berkas yang tidak ada bukan galat.
+     *
+     * Mengembalikan `true` bila berkas tidak ada lagi setelah pemanggilan.
+     * Penghapusan dipakai aksi operator "Hapus model" (instruksi pengguna
+     * 27 Oktober 2026) dan **tidak pernah** dipanggil otomatis oleh aplikasi
+     * (`Rules.md` §2.2).
+     */
+    fun delete(name: String): Boolean
+
+    /**
      * Nama berkas yang tersedia dan berawalan [prefix], urut menaik.
      *
      * Berkas sementara `<nama>.tmp` yang ditinggalkan tulisan yang gagal tidak
@@ -129,6 +139,35 @@ class ConfigStore(private val storage: ConfigStorage) {
 
     fun modelFileExists(name: String): Boolean =
         runCatching { storage.exists(name) }.getOrDefault(false)
+
+    /**
+     * Hapus berkas profil dan berkas model milik satu profil (instruksi pengguna
+     * 27 Oktober 2026).
+     *
+     * `true` berarti kedua berkas tidak ada lagi. Berkas yang memang tidak ada
+     * bukan galat: hasil akhirnya sama, yaitu tidak ada berkas tersisa.
+     */
+    fun deleteProfileFile(name: String): Boolean =
+        runCatching { storage.delete(name) }.getOrDefault(false)
+
+    fun deleteModelFile(name: String): Boolean =
+        runCatching { storage.delete(name) }.getOrDefault(false)
+
+    /**
+     * Kosongkan penanda profil aktif setelah profilnya dihapus (MOD-03).
+     *
+     * Profil aktif yang dihapus tidak boleh meninggalkan nama profil hantu pada
+     * `active-profile.txt`; keadaan yang benar adalah "belum dipilih".
+     */
+    fun clearActiveProfileId(): SaveResult = try {
+        storage.delete(ACTIVE_PROFILE_FILE)
+        SaveResult.Saved
+    } catch (error: Exception) {
+        SaveResult.Failed(
+            StoreProblemReason.WRITE_FAILED,
+            error.message ?: error::class.java.simpleName,
+        )
+    }
 
     /** Nama berkas model yang sudah lengkap, urut menaik (D-09, MOD-01). */
     fun listModelFiles(): List<String> = runCatching { storage.listNames(MODEL_PREFIX) }

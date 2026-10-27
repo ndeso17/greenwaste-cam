@@ -44,6 +44,13 @@ class FileConfigStorage(context: Context) : ConfigStorage {
 
     override fun exists(name: String): Boolean = File(directory, name).exists()
 
+    override fun delete(name: String): Boolean {
+        val file = File(directory, name)
+        // Berkas yang sudah tidak ada dianggap berhasil dihapus: hasil akhirnya sama.
+        if (!file.exists()) return true
+        return file.delete()
+    }
+
     /**
      * Daftar berkas lengkap berawalan [prefix] (MOD-01). Nama berkas sementara
      * berakhiran `.tmp` dilewati karena bisa berasal dari tulisan yang gagal di

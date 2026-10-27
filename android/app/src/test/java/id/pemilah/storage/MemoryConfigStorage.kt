@@ -51,6 +51,13 @@ open class MemoryConfigStorage : ConfigStorage {
     override fun exists(name: String): Boolean =
         files.containsKey(name) || binaryFiles.containsKey(name)
 
+    override fun delete(name: String): Boolean {
+        if (failWrite) error("disk penuh")
+        files.remove(name)
+        binaryFiles.remove(name)
+        return true
+    }
+
     override fun listNames(prefix: String): List<String> = (files.keys + binaryFiles.keys)
         .filter { it.startsWith(prefix) && !it.endsWith(".tmp") }
         .distinct()

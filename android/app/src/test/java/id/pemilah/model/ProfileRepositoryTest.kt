@@ -284,4 +284,96 @@ class ProfileRepositoryTest {
             result,
         )
     }
+
+    // --- Penghapusan profil (instruksi pengguna 27 Oktober 2026) ---------------
+
+    @Test
+    fun delete_removesProfileFileAndModelFile() {
+        val fixture = Fixture()
+        fixture.repository.saveWithModel(validProfile, modelBytes)
+
+        val result = fixture.repository.delete(validProfile.profileId)
+
+        assertEquals(ProfileDeleteResult.Deleted(validProfile.profileId, true), result)
+        assertEquals(emptyList<StoredProfile>(), fixture.repository.list())
+        assertFalse(fixture.store.profileFileExists(ProfileRepository.fileNameFor(validProfile.profileId)))
+        assertFalse(fixture.store.modelFileExists(ProfileRepository.modelFileNameFor(validProfile.profileId)))
+    }
+
+    @Test
+    fun delete_activeProfile_clearsActiveMarker() {
+        val fixture = Fixture()
+        fixture.repository.saveWithModel(validProfile, modelBytes)
+        fixture.repository.setActive(validProfile.profileId)
+
+        fixture.repository.delete(validProfile.profileId)
+
+        // Profil aktif yang dihapus tidak boleh menyisakan rujukan hantu.
+        assertEquals(
+            ActiveProfileState.None(ActiveProfileAbsentReason.NOT_SELECTED),
+            fixture.repository.active(),
+        )
+    }
+
+    @Test
+    fun delete_leavesOtherProfilesUntouched() {
+        val fixture = Fixture()
+        val second = validProfile.copy(
+            profileId = "6f1a1d2c-0000-4000-8000-000000000002",
+            name = "resnet18-7kelas",
+            modelFile = "model-6f1a1d2c-0000-4000-8000-000000000002.onnx",
+        )
+        fixture.repository.saveWithModel(validProfile, modelBytes)
+        fixture.repository.saveWithModel(second, byteArrayOf(9, 9))
+        fixture.repository.setActive(second.profileId)
+
+        fixture.repository.delete(validProfile.profileId)
+
+        assertEquals(listOf(second), fixture.repository.list().map { (it as StoredProfile.Usable).profile })
+        assertEquals(ActiveProfileState.Selected(second), fixture.repository.active())
+    }
+
+    @Test
+    fun delete_missingProfile_reportsNotFound() {
+        val fixture = Fixture()
+
+        assertEquals(
+            ProfileDeleteResult.NotFound("tidak-ada"),
+            fixture.repository.delete("tidak-ada"),
+        )
+    }
+
+    @Test
+    fun delete_withoutModelFile_stillDeletesProfile() {
+        val fixture = Fixture()
+        // Profil tersimpan tanpa berkas model (mis. salinan model gagal sebelumnya).
+        fixture.store.writeProfileFile(
+            ProfileRepository.fileNameFor(validProfile.profileId),
+            ProfileJson.encode(validProfile),
+        )
+
+        val result = fixture.repository.delete(validProfile.profileId)
+
+        assertEquals(ProfileDeleteResult.Deleted(validProfile.profileId, false), result)
+        assertEquals(emptyList<StoredProfile>(), fixture.repository.list())
+    }
+
+    @Test
+    fun delete_storageFailure_reportsStorageFailedAndKeepsProfile() {
+        val fixture = Fixture()
+        fixture.repository.saveWithModel(validProfile, modelBytes)
+        fixture.storage.failWrite = true
+
+        val result = fixture.repository.delete(validProfile.profileId)
+
+        assertEquals(
+            ProfileDeleteResult.StorageFailed(
+                StoreProblemReason.WRITE_FAILED,
+                ProfileRepository.fileNameFor(validProfile.profileId),
+            ),
+            result,
+        )
+        fixture.storage.failWrite = false
+        assertEquals(1, fixture.repository.list().size)
+    }
 }
