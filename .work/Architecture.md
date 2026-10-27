@@ -74,6 +74,7 @@ pada WP yang sama.
 | Profil aktif dan ambang | `ProfileRepository` | Detector, UI |
 | Kalibrasi dan status validitas | `CameraCalibration`, `CalibrationValidity` | WorkAreaFilter, TargetSelector, UI |
 | Hasil deteksi terakhir | `FramePipeline` | UI overlay, Tracker |
+| Hasil klasifikasi dan kotak petak | `OperationSession` | `ClassificationPanel`, `DetectionOverlay` |
 | Identitas pelacakan | `Tracker` | TargetSelector, TelemetryQueue |
 | Target aktif | `TargetSelector` | CommandCodec, UI |
 | Status koneksi controller | `ControllerLink` | OperationGuard, UI |
@@ -119,6 +120,32 @@ pemasok deteksi (`Detector`) yang belum ada. Sampai pemasok itu tersedia, model
 klasifikasi aktif belum dapat menghasilkan kandidat; batas ini berlaku sebagai
 hambatan terbuka, bukan implementasi selesai.
 
+### 6.1 Jalur klasifikasi kamera (D-12, D-13, D-14)
+
+```
+CameraPreview (ImageAnalysis, STRATEGY_KEEP_ONLY_LATEST, jeda 400 ms)
+  └─ RgbaConversion → ArgbFrame
+       └─ OperationSession.onFrame
+            ├─ FrameTiles.split(3×3)                → sembilan petak berwilayah
+            ├─ Classifier.classifyAll               → satu eksekusi batch [N,3,H,W]
+            │    └─ OrtClassifier: sesi ORT per berkas model + ImageNetNormalization
+            ├─ TileDetectionFilter.select(ambang)   → kotak yang lolos ambang
+            └─ ClassificationUi.Result + detections
+                 └─ ClassificationPanel + DetectionOverlay
+```
+
+Aturan yang mengikat:
+
+1. Frame hanya diminta saat `OperationSession.isRunning`; berhenti berarti tidak
+   ada inferensi sama sekali.
+2. Batch gagal (model dengan batch tetap 1) mundur ke eksekusi satu per satu;
+   hasil yang dilaporkan sama, hanya jumlah eksekusi berbeda.
+3. Ambang `0.0` berarti belum ditetapkan (D-09) dan tidak menghasilkan kotak.
+4. Kotak adalah batas petak yang lolos ambang, bukan tepi objek. Overlay tidak
+   boleh menyebutnya deteksi objek.
+5. Ringkasan kotak diekspos sebagai deskripsi aksesibilitas karena isi kanvas
+   tidak terbaca pembaca layar.
+
 ## 7. Kontrak pesan ke controller
 
 Belum ditetapkan (B-04). Yang mengikat pada sisi aplikasi:
@@ -159,10 +186,14 @@ lintasan), B-15 (definisi kelas), B-16 (alokasi kelas ke bak), serta bagian
 **perangkat sasaran** dari B-01 (stack sudah disetujui D-01).
 
 Setelah D-10, terbuka juga: sumber kotak objek untuk model klasifikasi
-(pemasok deteksi dan kontrak `OutputDecoder`, B-02) serta normalisasi masukan
-model klasifikasi (ResNet18 memakai rata-rata/simpangan ImageNet, sedangkan
-`Normalization` baru mengenal `scale_0_1`, `scale_minus_one_one`, dan `none`).
-Keduanya belum memengaruhi impor, tetapi menghalangi inferensi nyata.
+(pemasok deteksi dan kontrak `OutputDecoder`, B-02), normalisasi masukan model
+klasifikasi (D-12: ImageNet mean `0.485/0.456/0.406`, std `0.229/0.224/0.225`,
+satu sumber `ImageNetNormalization`; akurasi terhadap data latih belum diuji),
+dan keakuratan kotak overlay (D-14: batas petak 3×3, belum ada NMS atau
+penyaringan latar karena model tidak punya kelas latar).
+
+Hambatan B-17 (model deteksi YOLO tujuh kelas) tetap terbuka: selama model itu
+tidak ada, kotak pada kamera hanya menandai petak yang dinilai, bukan objek.
 
 Komponen yang bergantung pada butir di atas tetap boleh dibuat kerangkanya,
 tetapi tidak boleh diisi angka, protokol, atau klaim hasil tanpa keputusan.

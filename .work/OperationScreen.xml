@@ -98,12 +98,18 @@
       <state id="ready" presentation="profile-list-with-validation-status"/>
       <state id="rejected" presentation="field-level-reason-inside-card"/>
       <state id="blocked" presentation="named-blocker; grouping-behaviour-pending-B-07"/>
+      <state id="deleteConfirm" presentation="dialog-names-model-and-onnx-file-deletion-is-irreversible; cancel-changes-nothing"/>
+      <state id="deleted" presentation="snackbar-names-model; row-removed; active-marker-cleared-if-active-was-deleted"/>
     </states>
   </modelsScreen>
   <modes>
-    <mode id="monitoring" stage="3" startLabel="Mulai pemantauan" stopLabel="Hentikan pemantauan" startGuard="camera-profile-camera-calibration-related-faults-valid" actuatorCommands="forbidden">
+    <mode id="monitoring" stage="3" startLabel="Mulai pemantauan" stopLabel="Hentikan pemantauan" startGuard="camera-and-active-model-valid" actuatorCommands="forbidden">
       <unavailable components="robotPanel conveyorPanel targetDestination" text="Belum terintegrasi" controls="disabled"/>
       <rule>USB dan robot bukan syarat mulai pemantauan.</rule>
+      <rule>Kalibrasi, konfigurasi mesin, pemetaan kelas ke bak, dan kelas aktif bukan syarat mulai pemantauan; keempatnya menahan pemilahan (D-11).</rule>
+      <overlay id="cameraGuides" default="on" toggle="Tampilkan garis bantu" note="garis pembagi tiga untuk membidik; bukan area kerja hasil kalibrasi"/>
+      <overlay id="classificationBoxes" source="tile-classification-3x3" label="class-and-confidence-percent" staleAfterMs="2500" note="batas petak yang lolos ambang, bukan tepi objek (D-14)"/>
+      <panel id="classificationPanel" fields="top-label confidence threshold model runner-up tiles-checked" below-threshold="marked-not-hidden" failure="named-reason"/>
     </mode>
     <mode id="sorting" fromStage="4" startLabel="Mulai pemilahan" stopLabel="Hentikan pemilahan" startGuard="camera-profile-controller-machine-config-active-class-mapping-relevant-calibrations-valid-and-no-blocking-fault"/>
   </modes>

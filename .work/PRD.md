@@ -115,8 +115,23 @@ tensor masukan, dan keluarga keluaran dari bentuk tensor keluaran. JSON profil
 tetap dipakai sebagai format penyimpanan internal yang dihasilkan impor
 (`Schema.md` §3). Konsekuensinya: MOD-05 dan MOD-06 **belum memiliki kendali
 pada layar Models** — logika domainnya ada dan diuji, celah UI-nya dicatat pada
-`../.work/FINDINGS.md`. Inferensi pada frame kamera belum diimplementasikan dan
-bukan bagian dari perubahan ini.
+`../.work/FINDINGS.md`.
+
+**Hapus model (27 Oktober 2026).** Model yang sudah diimpor dapat dihapus dari
+kartunya setelah konfirmasi. Kriteria terima: dialog menyebut nama model dan
+menyatakan berkas `.onnx` ikut terhapus serta tidak dapat dibatalkan; setelah
+dihapus, kartu hilang dan berkas model tidak lagi berada di penyimpanan
+aplikasi; bila model aktif yang dihapus, penanda aktif dan berkas penunjuk
+profil aktif ikut dibersihkan sehingga layar Operasi menyatakan profil belum
+dipilih.
+
+**Inferensi klasifikasi pada kamera (27 Oktober 2026, D-12/D-13/D-14).** Model
+klasifikasi aktif kini dijalankan pada frame kamera selama pemantauan:
+`CAM-02` dipenuhi untuk **klasifikasi petak** — kotak digambar pada petak 3×3
+yang lolos ambang profil, berlabel kelas dan persen keyakinan, ditandai usang
+setelah 2,5 detik. Kotak itu batas petak, bukan tepi objek; `CAM-01`, `CAM-04`,
+`CAM-05`, dan `CAM-06` tetap terbuka sampai ada model deteksi (B-17) dan kontrak
+`OutputDecoder` (B-02).
 
 **Model utama prototipe (D-10, 27 Oktober 2026).** Model yang dipakai pengguna
 adalah ResNet18 **klasifikasi** tujuh kelas (masukan 224×224, keluaran

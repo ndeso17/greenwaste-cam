@@ -443,6 +443,7 @@ berkas konfigurasi JSON, tidak ada sakelar kelompok, dan tidak ada tampilan bak.
 | `ModelsProfileList` | Satu kartu per model: nama, versi (bila model menuliskannya), status validasi (ikon + teks), jumlah kelas, label berurutan beserta kelas resmi hasil pencocokan, alasan penolakan per bidang | `ModelsUiState.rows` |
 | `ModelsThresholdEditor` | Nilai awal dari profil tersimpan, ditampilkan sebagai pecahan dan persen, tombol "Terapkan ambang"; ambang `0.0` ditampilkan sebagai "Belum ditetapkan" dengan warna peringatan | `ModelsUiState.thresholdDrafts` |
 | `ModelsActivateAction` | Tombol "Jadikan model aktif" hanya pada model yang lolos validasi dan belum aktif | `ModelsSession.setActiveProfile` |
+| `ModelsDeleteAction` | Tombol "Hapus model" pada setiap kartu; membuka `DeleteConfirmationDialog` yang menyebut nama model dan menyatakan berkas `.onnx` ikut terhapus serta tidak dapat dibatalkan. Hanya tombol "Hapus" di dialog yang menghapus | `ModelsSession.deleteProfile` |
 
 ### Keadaan wajib
 
@@ -454,6 +455,8 @@ berkas konfigurasi JSON, tidak ada sakelar kelompok, dan tidak ada tampilan bak.
 | Ambang belum ditetapkan | Keterangan "Belum ditetapkan" pada field ambang dan penolakan aktivasi `CONFIDENCE_THRESHOLD_UNSET` |
 | Gagal | Alasan per bidang pada kartu model; impor gagal menampilkan kode alasannya (bukan `.onnx`, bukan model yang dapat dibuka, metadata kelas tidak ada, bentuk tensor tidak didukung, label tak dikenal, penyimpanan gagal) |
 | Terblokir | Alasan pergantian model ditolak (`ProfileSwitchBlockCode`) |
+| Konfirmasi hapus | Dialog menyebut nama model dan akibatnya (berkas `.onnx` terhapus, tidak dapat dibatalkan); "Batal" menutup tanpa perubahan |
+| Selesai hapus | Snackbar `Model "<nama>" dihapus.`; kartu hilang dari daftar. Bila model aktif yang dihapus, penanda aktif hilang dan daftar menampilkan "Belum ada model aktif yang dipilih." |
 
 Layar tidak boleh menampilkan model, label, ambang, atau bak contoh. Daftar
 kosong berarti belum ada model di penyimpanan aplikasi.
@@ -497,11 +500,30 @@ model sah. Perbaikan dan test-nya dicatat pada berkas bukti tersebut.
 
 ### Yang belum ditetapkan
 
-- Inferensi pada frame kamera (`Detector`, `OutputDecoder`, overlay hasil) belum
-  diimplementasikan; model yang diimpor belum dipakai mendeteksi objek.
 - Perilaku pengelompokan objek menunggu B-07; logika domain sakelar masih ada
   tetapi tidak lagi tampil di layar ini (celah UI dicatat di
   `../.work/FINDINGS.md`).
 - Nama bak sah dan alokasi tujuh kelas ke enam bak menunggu B-15/B-16; layar
   tidak lagi menampilkan bak.
-- Model tujuh kelas hasil retraining menunggu B-17.
+- Model deteksi tujuh kelas menunggu B-17. Selama model itu tidak ada, kotak pada
+  kamera adalah batas petak klasifikasi (D-14), bukan tepi objek.
+
+## Operasi — garis bantu, panel klasifikasi, dan kotak — 27 Oktober 2026
+
+Instruksi pengguna: kamera harus bisa dipakai menguji klasifikasi tanpa
+kalibrasi dan USB, dengan garis bantu bidik, dan hasil klasifikasi tampil di
+kamera. Perubahan yang mengikat:
+
+| Bagian | Aturan |
+|---|---|
+| Guard Mulai (mode pemantauan) | Hanya kamera siap dan profil aktif sah yang menahan Mulai. Kalibrasi, konfigurasi, pemetaan bak, USB, dan kelas aktif hanya menahan pemilahan (D-11) |
+| `CameraGuidesOverlay` | Garis pembagi tiga pada pratinjau, aktif secara bawaan, dapat dimatikan lewat sakelar "Tampilkan garis bantu" |
+| `ClassificationPanel` | Menampilkan label teratas, keyakinan (persen bulat), ambang profil, nama model, pesaing terdekat, dan jumlah petak diperiksa; di bawah ambang diberi tanda, bukan disembunyikan |
+| Kotak overlay | Kotak pada petak yang lolos ambang, berlabel kelas + persen keyakinan; kotak lebih tua dari 2,5 detik ditandai usang. Ringkasan kotak ditulis sebagai deskripsi aksesibilitas karena isi kanvas tidak terbaca pembaca layar |
+
+Batas yang dinyatakan di UI dan dokumen: garis bantu bukan area kerja hasil
+kalibrasi, dan kotak bukan batas objek.
+
+Bukti perangkat: `.work/evidence/kamera-klasifikasi.md` beserta tangkap layar
+`klasifikasi-kotak-overlay-27102026.png` dan
+`klasifikasi-panel-kotak-27102026.png`.
