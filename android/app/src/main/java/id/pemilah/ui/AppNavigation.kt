@@ -29,6 +29,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -45,6 +46,14 @@ import androidx.compose.ui.unit.sp
 import id.pemilah.Palette
 import id.pemilah.PemilahColors
 import id.pemilah.R
+import id.pemilah.domain.operation.MachineState
+import id.pemilah.model.ProfileImport
+import id.pemilah.model.ProfileImportProblem
+import id.pemilah.model.ProfileRepository
+import id.pemilah.model.ProfileSwitchBlock
+import id.pemilah.storage.ConfigStore
+import id.pemilah.storage.ContentProfileReader
+import id.pemilah.storage.FileConfigStorage
 
 /**
  * Lebar rail navigasi. Nilai ini keputusan tata letak D-UI-02, bukan angka
@@ -67,6 +76,27 @@ fun AppNavigation(
     initialDestination: AppDestination = AppDestination.OPERATION,
 ) {
     var current by remember { mutableStateOf(initialDestination) }
+    val context = LocalContext.current
+    // Satu sesi Models untuk seluruh aplikasi: layar Models dan layar Operasi
+    // membaca profil aktif dari sumber yang sama (Architecture.md §4).
+    val modelsSession = remember(context) {
+        val repository = ProfileRepository(ConfigStore(FileConfigStorage(context.applicationContext)))
+        ModelsSession(repository, ProfileImport(repository))
+    }
+    val profileFileReader = remember(context) { ContentProfileReader(context.applicationContext) }
+    var modelsState by remember(modelsSession) { mutableStateOf(modelsSession.load()) }
+    var importProblems by remember { mutableStateOf(emptyList<ProfileImportProblem>()) }
+    var switchBlocks by remember { mutableStateOf(emptyList<ProfileSwitchBlock>()) }
+
+    fun applyOutcome(outcome: ModelsSessionOutcome) {
+        modelsState = outcome.state
+        importProblems = outcome.messages
+            .filterIsInstance<ModelsSessionMessage.ImportRejected>()
+            .flatMap { it.problems }
+        switchBlocks = outcome.messages
+            .filterIsInstance<ModelsSessionMessage.SwitchRejected>()
+            .flatMap { it.blocks }
+    }
     // rememberSaveable: lipat tidak berubah saat konfigurasi ulang (D-UI-02 butir 5).
     // Boolean disimpan langsung karena Compose dapat menyimpan tipe primitif tanpa
     // Saver khusus; NavigationRailState tetap menjadi kontrak yang diuji.
@@ -81,7 +111,41 @@ fun AppNavigation(
         }
         Row(Modifier.fillMaxSize()) {
             Spacer(Modifier.width(reservedWidth))
-            DestinationContent(destination = current, modifier = Modifier.fillMaxSize())
+            DestinationContent(
+                destination = current,
+                modelsState = modelsState,
+                importProblems = importProblems,
+                switchBlocks = switchBlocks,
+                profileLabel = modelsSession.operationProfileLabel(modelsState),
+                onProfileFilePicked = { uri ->
+                    applyOutcome(modelsSession.importProfile(uri, profileFileReader))
+                },
+                onThresholdTextChange = { profileId, text ->
+                    modelsState = modelsSession.draftThreshold(profileId, text)
+                },
+                onThresholdCommit = { profileId ->
+                    applyOutcome(
+                        modelsSession.commitThreshold(profileId, modelsState.thresholdTextOf(profileId).orEmpty()),
+                    )
+                },
+                onGroupingToggle = { profileId, enabled ->
+                    applyOutcome(modelsSession.toggleGrouping(profileId, enabled))
+                },
+                onActivateProfile = { profileId ->
+                    // Pemilik state operasi belum membagikan status berjalan pada
+                    // tahap ini; guard tetap dijalankan dengan masukan sebenarnya
+                    // dari pemanggil dan diuji dengan matriks penuh pada
+                    // `ModelsSessionTest`.
+                    applyOutcome(
+                        modelsSession.setActiveProfile(
+                            profileId = profileId,
+                            machineState = MachineState.Stopped,
+                            hasActiveTarget = false,
+                        ),
+                    )
+                },
+                modifier = Modifier.fillMaxSize(),
+            )
         }
         NavigationRail(
             current = current,
@@ -234,11 +298,38 @@ private fun NavigationRailItem(
 @Composable
 private fun DestinationContent(
     destination: AppDestination,
+    modelsState: ModelsUiState,
+    importProblems: List<ProfileImportProblem>,
+    switchBlocks: List<ProfileSwitchBlock>,
+    profileLabel: String?,
+    onProfileFilePicked: (String) -> Unit,
+    onThresholdTextChange: (String, String) -> Unit,
+    onThresholdCommit: (String) -> Unit,
+    onGroupingToggle: (String, Boolean) -> Unit,
+    onActivateProfile: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (destination == AppDestination.OPERATION) {
+        // Profil aktif disalurkan sebagai state awal supaya layar Operasi
+        // menampilkan nama dan versi tanpa memulai operasi (UI-01, T-038).
         OperationScreen(
             modifier = modifier,
+            state = rememberDefaultOperationState()
+                .copy(profileNameAndVersion = profileLabel),
+        )
+        return
+    }
+    if (destination == AppDestination.MODELS) {
+        ModelsScreen(
+            state = modelsState,
+            onProfileFilePicked = onProfileFilePicked,
+            modifier = modifier,
+            importProblems = importProblems,
+            onThresholdTextChange = onThresholdTextChange,
+            onThresholdCommit = onThresholdCommit,
+            onGroupingToggle = onGroupingToggle,
+            onActivateProfile = onActivateProfile,
+            switchBlocks = switchBlocks,
         )
         return
     }

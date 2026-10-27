@@ -153,6 +153,10 @@
     <string name="models_reason_unknown_normalization">normalisasi masukan tidak dikenali</string>
     <string name="models_reason_class_not_in_profile">kelas ini tidak dipetakan oleh profil</string>
     <string name="models_reason_invalid_bin_name">nama bak kosong bukan berarti belum ditetapkan</string>
+    <string name="models_action_activate">Jadikan profil aktif</string>
+    <string name="models_switch_running">Profil tidak dapat diganti selama pemantauan berjalan.</string>
+    <string name="models_switch_active_target">Profil tidak dapat diganti selama masih ada target aktif.</string>
+    <string name="models_switch_invalid_profile">Profil tujuan tidak lolos validasi. Profil lama tetap aktif.</string>
     <string name="models_threshold_label">Ambang keyakinan</string>
     <string name="models_threshold_percent">Setara %1$s</string>
     <string name="models_threshold_hint">Masukkan pecahan 0–1 atau ketik persen; nilai tersimpan tetap pecahan.</string>

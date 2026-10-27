@@ -40,6 +40,8 @@ import id.pemilah.R
 import id.pemilah.model.ActiveProfileAbsentReason
 import id.pemilah.model.ProfileImportProblem
 import id.pemilah.model.ProfileImportProblemCode
+import id.pemilah.model.ProfileSwitchBlock
+import id.pemilah.model.ProfileSwitchBlockCode
 
 /**
  * Layar Models: daftar profil model tersimpan, label kelas, alasan penolakan,
@@ -66,6 +68,8 @@ fun ModelsScreen(
     onThresholdTextChange: (String, String) -> Unit = { _, _ -> },
     onThresholdCommit: (String) -> Unit = {},
     onGroupingToggle: (String, Boolean) -> Unit = { _, _ -> },
+    onActivateProfile: (String) -> Unit = {},
+    switchBlocks: List<ProfileSwitchBlock> = emptyList(),
 ) {
     val picker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocument(),
@@ -91,6 +95,9 @@ fun ModelsScreen(
         if (importProblems.isNotEmpty()) {
             ImportProblems(importProblems)
         }
+        if (switchBlocks.isNotEmpty()) {
+            SwitchBlocks(switchBlocks)
+        }
         when {
             state.loading -> Text(
                 text = stringResource(R.string.models_loading),
@@ -104,9 +111,34 @@ fun ModelsScreen(
                 onThresholdTextChange = onThresholdTextChange,
                 onThresholdCommit = onThresholdCommit,
                 onGroupingToggle = onGroupingToggle,
+                onActivateProfile = onActivateProfile,
             )
         }
     }
+}
+
+/**
+ * Alasan pergantian profil ditolak (MOD-03), dikembalikan `ProfileSwitchGuard`
+ * lewat [ModelsSession]; layar tidak menyimpulkan sebabnya sendiri.
+ */
+@Composable
+private fun SwitchBlocks(blocks: List<ProfileSwitchBlock>) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        blocks.forEach { block ->
+            Text(
+                text = stringResource(block.code.messageRes()),
+                color = Palette.warning,
+                fontSize = 13.sp,
+            )
+        }
+    }
+}
+
+@StringRes
+private fun ProfileSwitchBlockCode.messageRes(): Int = when (this) {
+    ProfileSwitchBlockCode.MACHINE_RUNNING -> R.string.models_switch_running
+    ProfileSwitchBlockCode.ACTIVE_TARGET_PRESENT -> R.string.models_switch_active_target
+    ProfileSwitchBlockCode.PROFILE_INVALID -> R.string.models_switch_invalid_profile
 }
 
 /** Filter pemilih dokumen: hanya berkas JSON profil yang ditawarkan (UI-02). */
@@ -158,6 +190,7 @@ private fun ProfilesList(
     onThresholdTextChange: (String, String) -> Unit,
     onThresholdCommit: (String) -> Unit,
     onGroupingToggle: (String, Boolean) -> Unit,
+    onActivateProfile: (String) -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         state.activeAbsentReason?.let { reason ->
@@ -175,6 +208,7 @@ private fun ProfilesList(
                     onThresholdTextChange = onThresholdTextChange,
                     onThresholdCommit = onThresholdCommit,
                     onGroupingToggle = onGroupingToggle,
+                    onActivateProfile = onActivateProfile,
                 )
             }
         }
@@ -188,6 +222,7 @@ private fun ProfileRow(
     onThresholdTextChange: (String, String) -> Unit,
     onThresholdCommit: (String) -> Unit,
     onGroupingToggle: (String, Boolean) -> Unit,
+    onActivateProfile: (String) -> Unit,
 ) {
     Column(
         modifier = Modifier
@@ -257,6 +292,13 @@ private fun ProfileRow(
             onThresholdCommit = onThresholdCommit,
         )
         GroupingToggle(row = row, onGroupingToggle = onGroupingToggle)
+        // Tombol aktifkan hanya muncul untuk profil yang lolos validasi; profil
+        // rusak tidak dapat diaktifkan (MOD-03).
+        if (row.status == ModelsProfileStatus.VALID && !row.isActive) {
+            Button(onClick = { onActivateProfile(row.profileId) }) {
+                Text(text = stringResource(R.string.models_action_activate))
+            }
+        }
     }
 }
 
