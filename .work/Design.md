@@ -610,3 +610,9 @@ gambar dan objek; di dalam dialog label, seluruh baris label dapat diketuk.
 `Galeri` melaporkan bila hanya sebagian berhasil. Pilihan tidak mengubah makna
 koreksi: koreksi massal tetap tersimpan sebagai koreksi per objek dengan jam
 yang sama.
+
+### Warna status koreksi Galeri (27 Oktober 2026)
+Border card 2 dp berwarna hijau (#2E7D32) hanya jika seluruh objek memiliki
+label koreksi tersimpan. Card belum dikoreksi atau baru sebagian dikoreksi
+berborder merah (#C62828). Teks status dan centang tetap tersedia; warna
+border menunjukkan koreksi, sedangkan centang menunjukkan pilihan.

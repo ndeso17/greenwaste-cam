@@ -1,5 +1,6 @@
 package id.pemilah.ui
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
@@ -31,6 +32,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import id.pemilah.R
@@ -165,7 +167,12 @@ fun GalleryScreen(store: SampleStore, modifier: Modifier = Modifier) {
             LazyColumn(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(records, key = { it.id }) { record ->
                     val checked = selection.isSampleSelected(record.id)
+                    val corrected = record.objects.isNotEmpty() &&
+                        record.objects.all { it.correctedLabel != null }
                     OutlinedCard(
+                        border = BorderStroke(
+                            2.dp, if (corrected) Color(0xFF2E7D32) else Color(0xFFC62828),
+                        ),
                         // Tekan lama = tandai kartu ini (masuk mode pilih), ketuk = buka
                         // detail. Saat mode pilih aktif, ketuk kartu menandai/batal.
                         modifier = Modifier
@@ -207,7 +214,7 @@ fun GalleryScreen(store: SampleStore, modifier: Modifier = Modifier) {
                                 )
                                 Text(
                                     stringResource(
-                                        if (record.objects.all { it.correctedLabel != null }) {
+                                        if (corrected) {
                                             R.string.gallery_confirmed
                                         } else {
                                             R.string.gallery_unreviewed
