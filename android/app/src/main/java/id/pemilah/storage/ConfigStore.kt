@@ -79,6 +79,33 @@ class ConfigStore(private val storage: ConfigStorage) {
 
     fun writeProfileFile(name: String, content: String): SaveResult = write(name, content)
 
+    /**
+     * Nama berkas profil yang sudah lengkap, urut menaik (MOD-01).
+     *
+     * Berkas sementara `.tmp` tidak termasuk karena tulisan yang gagal di tengah
+     * jalan belum tentu utuh. Daftar kosong berarti belum ada profil, bukan galat.
+     */
+    fun listProfileFiles(): List<String> = runCatching { storage.listNames(PROFILE_PREFIX) }
+        .getOrDefault(emptyList())
+        .filter { it.endsWith(PROFILE_EXTENSION) }
+
+    fun profileFileExists(name: String): Boolean =
+        runCatching { storage.exists(name) }.getOrDefault(false)
+
+    /**
+     * `profileId` profil aktif; `null` berarti belum pernah dipilih (MOD-03).
+     *
+     * Berkas kosong atau hanya berisi spasi juga dianggap belum dipilih supaya
+     * tulisan yang terpotong tidak menjadi nama profil hantu.
+     */
+    fun readActiveProfileId(): String? = runCatching { storage.read(ACTIVE_PROFILE_FILE) }
+        .getOrNull()
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() }
+
+    fun writeActiveProfileId(profileId: String): SaveResult =
+        write(ACTIVE_PROFILE_FILE, profileId)
+
     private fun <T> load(name: String, decode: (String) -> T): LoadResult<T> {
         val text = runCatching { storage.read(name) }.getOrElse {
             return LoadResult.Corrupted(listOf(StoreProblem(name, StoreProblemReason.CORRUPTED)))
@@ -111,5 +138,12 @@ class ConfigStore(private val storage: ConfigStorage) {
     companion object {
         const val CONFIG_FILE: String = "machine-config.txt"
         const val CALIBRATION_FILE: String = "camera-calibration.txt"
+
+        /** Awalan nama berkas profil; dipakai juga oleh `ProfileRepository`. */
+        const val PROFILE_PREFIX: String = "profile-"
+        const val PROFILE_EXTENSION: String = ".json"
+
+        /** Nama berkas penanda profil aktif (MOD-03). */
+        const val ACTIVE_PROFILE_FILE: String = "active-profile.txt"
     }
 }
