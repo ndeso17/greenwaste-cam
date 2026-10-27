@@ -244,3 +244,22 @@ menulis satu gambar sekali sehingga tidak ada koreksi separuh dan melaporkan
 gambar yang gagal tanpa menghentikan sisanya; `deleteMany` melakukan hal sama
 untuk penghapusan. Label yang tidak dimiliki model terlampir dilewati dengan
 jumlah yang dilaporkan ke operator.
+
+### Deduplikasi sampel Uji Model (27 Oktober 2026)
+Instruksi pengguna: objek sama di posisi sama tidak terus disimpan.
+`ModelTestSession` memiliki `TestSampleDeduplicator`, terpisah dari tracker
+pemilahan robot. Setiap proposal dipasangkan satu-ke-satu dengan anchor
+posisi/descriptor yang telah diamati; label dan probabilitas tidak menjadi
+identitas. IoU minimum 0.8 dan kemiripan descriptor warna minimum 0.97
+adalah heuristik gambar awal, bukan toleransi mesin atau bukti identitas fisik.
+Anchor tetap agar perpindahan kecil berurutan akhirnya menghasilkan sampel baru.
+Dua frame tanpa deteksi ditoleransi; setelah tiga frame hilang, kemunculan
+berikutnya dianggap baru. Frame hanya disimpan jika ada objek belum tersimpan;
+seluruh objek frame itu tetap dicatat bersama gambar sumber yang sama.
+Penanda tersimpan hanya disahkan setelah SampleStore.save berhasil sehingga
+kegagalan encoding/I/O dapat dicoba ulang pada frame berikutnya. Tidak ada
+encoding JPEG untuk frame duplikat. State direset saat sesi baru atau perubahan
+model/resolusi; tidak membaca atau menghapus sampel Galeri lama.
+Batas: objek berbeda dengan warna/posisi sangat mirip dapat dianggap sama;
+perubahan pencahayaan besar dapat menghasilkan sampel baru. Pembuktian kamera
+HP tetap MANUAL-VERIFY; mekanisme ini bukan jaminan pelacakan fisik (CAM-05).

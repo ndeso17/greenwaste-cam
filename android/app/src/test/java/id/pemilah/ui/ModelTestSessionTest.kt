@@ -27,9 +27,16 @@ class ModelTestSessionTest {
             assertTrue(test.start());assertFalse(test.start())
             test.operation.onFrame(frame)
             assertEquals(2,store.list().single().objects.size)
+            repeat(10) { test.operation.onFrame(frame) }
+            assertEquals("Stationary objects must not produce repeated images", 1, store.list().size)
+            assertEquals(1, test.saved)
             assertTrue(store.snapshot().references.isEmpty())
             test.stop();test.operation.onFrame(frame)
             assertEquals(1,store.list().size)
+            assertTrue(test.start())
+            test.operation.onFrame(frame)
+            assertEquals(2, store.list().size)
+            assertEquals(1, test.saved)
         } finally {root.deleteRecursively()}
     }
     @Test fun emptyDetectionDoesNotCreateSampleAndReportsEmptyState() {
@@ -51,6 +58,32 @@ class ModelTestSessionTest {
             assertTrue(test.operation.classification is ClassificationUi.Failed)
             assertTrue(store.list().isEmpty());assertEquals(0,test.saved)
         } finally {root.deleteRecursively()}
+    }
+    @Test fun failedSaveIsRetriedWithoutEncodingStationaryDuplicates() {
+        val root = Files.createTempDirectory("retry-session").toFile()
+        try {
+            val store = SampleStore(root)
+            var attempts = 0
+            val pipeline = ObjectPipeline(
+                ObjectDetector { listOf(NormalizedRegion(0f, 0f, 1f, 1f)) }, classifier,
+            )
+            val test = ModelTestSession(
+                classifier, { ActiveProfileState.Selected(profile) }, pipeline, store,
+            ) {
+                attempts++
+                if (attempts == 1) error("ENCODE_FAILED")
+                byteArrayOf(1)
+            }
+            test.operation.updateCameraStatus(CameraStatus.Ready)
+            assertTrue(test.start())
+            test.operation.onFrame(frame)
+            assertEquals(0, test.saved)
+            test.operation.onFrame(frame)
+            repeat(10) { test.operation.onFrame(frame) }
+            assertEquals(2, attempts)
+            assertEquals(1, test.saved)
+            assertEquals(1, store.list().size)
+        } finally { root.deleteRecursively() }
     }
     @Test fun frameFromPreviousGenerationCannotPublishAfterRestart() {
         val entered=CountDownLatch(1);val release=CountDownLatch(1)
