@@ -136,3 +136,14 @@ Prasyarat lingkungan (dicatat di `../.work/evidence/device-requirements.md`):
 - ui/ModelTestSession.kt, ModelTestScreen.kt: pemilik sesi dan komposisi uji.
 - ui/GalleryScreen.kt: daftar, detail dan koreksi per objek pada worker IO.
 - android/app/src/main/assets/object-detector.onnx: CV/best.onnx, pemasok lokasi.
+
+## Deduplikasi Uji Model — 27 Oktober 2026
+- `android/app/src/main/java/id/pemilah/ui/TestSampleDeduplicator.kt`:
+  pembanding posisi/descriptor untuk sampel uji, dimiliki `ModelTestSession`;
+  bukan tracker pemilahan fisik.
+- `android/app/src/test/java/id/pemilah/ui/TestSampleDeduplicatorTest.kt`:
+  objek diam, jitter, label berubah, objek baru, gerak, perubahan visual,
+  hilang singkat, reset, retry, dan pencocokan satu-ke-satu.
+- `android/app/src/test/java/id/pemilah/ui/ModelTestSessionTest.kt`:
+  regresi penyimpanan/encoding duplikat dan reset sesi melalui pipeline.
+Perilaku dan batas heuristik: `Architecture.md` §8, deduplikasi sampel.
