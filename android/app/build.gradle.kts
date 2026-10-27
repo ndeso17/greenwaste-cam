@@ -53,6 +53,9 @@ dependencies {
     // Parser JSON berkas profil model — D-08. Hanya lapisan model/storage yang
     // memakai; ConfigCodec tetap dipakai untuk konfigurasi mesin dan kalibrasi.
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
+    // ONNX Runtime Android 1.19.2 — D-01, dipakai mulai D-09 untuk membaca berkas
+    // model hasil pelatihan (metadata kelas + bentuk tensor) saat impor.
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.19.2")
     // CameraX 1.4.0 — D-01. CameraX hanya dipakai lapisan platform/camera.
     implementation("androidx.camera:camera-core:1.4.0")
     implementation("androidx.camera:camera-camera2:1.4.0")
