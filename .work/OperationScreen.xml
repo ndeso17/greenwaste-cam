@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <screenSpec id="operationScreen" version="1" language="id-ID"
             kind="descriptive-ui-spec" androidLayout="false"
-            decision="D-UI-01" orientation="sensor-responsive">
+            decision="D-UI-01" orientation="full-sensor-including-system-rotation-lock">
   <sources markdown="Design.md" referenceImage="assets/OperationMockup-v1.png"
            plan="../../.work/Plan_AndroidPemilah_23102026-124815.md"/>
   <scope>Spesifikasi visual; bukan kode Android, protokol, atau persetujuan stack.</scope>
@@ -28,12 +28,12 @@
             <layer order="2" kind="blocks" binding="calibration.blocks" stroke="dashed" labels="configured-block-ids"/>
             <layer order="3" kind="detections" binding="detections.latest" stroke="solid" labels="class-and-confidence" stale="mark-explicitly"/>
             <layer order="4" kind="active-target" binding="target.active" stroke="thick-corners" label="TARGET"/>
-        <statusGroup id="cameraStatusStrip" placement="camera-bottom-above-shutter" background="black-alpha-0.64-backdrop-blur-api31" layout="horizontal-scroll; icon-plus-label-above-value; hairline-separated" requirement="UI-01 CAM-01 CAL-06 COM-01">
+        <statusGroup id="cameraStatusStrip" placement="camera-bottom-above-shutter" background="black-alpha-0.64-backdrop-blur-api31" layout="horizontal-scroll; circular-dot-plus-label; accessible-value-only; green-valid-gray-unconfigured-red-error; hairline-separated" requirement="UI-01 CAM-01 CAL-06 COM-01">
           <status id="cameraStatus" binding="camera.status"/>
           <status id="calibrationStatus" binding="calibration.validity"/>
           <status id="usbStatus" binding="controller.connection"/>
         </statusGroup>
-          <summary id="sessionSummary" placement="camera-top-floating" background="black-alpha-0.64-backdrop-blur-api31" layout="compact-horizontal-scroll" requirement="OUT-01 UI-06" wp="WP-34 WP-35">
+          <summary id="sessionSummary" placement="camera-top-floating" background="black-alpha-0.64-backdrop-blur-api31" layout="portrait-vertical-full-labels; landscape-compact-horizontal-scroll" requirement="OUT-01 UI-06" wp="WP-34 WP-35">
             <metric id="motionCompleted" label="Gerak selesai" binding="session.motionCompleted"/>
             <metric id="pickupVerified" label="Pengambilan terverifikasi" binding="session.pickupVerified"/>
             <metric id="pickupUnverified" label="Pengambilan belum terverifikasi" binding="session.pickupUnverified" tone="warning"/>

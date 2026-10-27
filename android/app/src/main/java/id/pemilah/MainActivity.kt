@@ -1,5 +1,6 @@
 package id.pemilah
 
+import android.content.pm.ActivityInfo
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -36,9 +37,10 @@ internal val PemilahColors = darkColorScheme(
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        // Follow device orientation; the operation UI adapts to portrait and tablet windows.
+        // Follow the physical device, including when system auto-rotation is locked.
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_FULL_SENSOR
         setContent {
             MaterialTheme(colorScheme = PemilahColors) {
                 Surface(

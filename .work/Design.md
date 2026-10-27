@@ -413,3 +413,14 @@ Kontrol memakai slot keterangan yang sama pada idle/aktif agar shutter tidak
 bergeser ketika berubah state. Line-height label 16 sp dan keterangan 12 sp;
 status 14/16 sp. Ringkasan tetap memiliki tinggi sentuh minimal 48 dp. Panel
 mesin menyisakan area bawah 224 dp untuk status/kontrol dan teks diperbesar.
+
+### Amandemen status minimal dan sensor — 27 Oktober 2026
+Status kamera, kalibrasi dan USB hanya label putih dengan titik bulat: hijau
+untuk aktif/sah/terhubung, abu-abu untuk belum disiapkan/izin belum diberikan/
+belum terhubung/menghubungkan, merah untuk kamera tidak tersedia/gagal,
+kalibrasi perlu diperiksa dan koneksi gagal. Deskripsi lengkap tetap tersedia
+bagi pembaca layar; tidak ada nilai status tambahan secara visual.
+Ringkasan portrait vertikal memakai nama lengkap lima metrik; landscape memakai
+singkatan horizontal. Surface transparan gelap/blur dan preview penuh dipertahankan.
+Activity memakai FULL_SENSOR sehingga mengikuti posisi fisik HP, termasuk saat
+rotasi sistem dikunci. State pemantauan dan alur deteksi tidak diubah.

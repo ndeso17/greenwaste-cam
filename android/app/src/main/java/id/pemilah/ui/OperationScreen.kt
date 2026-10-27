@@ -1,5 +1,6 @@
 package id.pemilah.ui
 
+import android.content.res.Configuration
 import android.Manifest
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -23,6 +24,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
@@ -47,6 +49,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -178,11 +181,8 @@ private fun CameraStatusField(label: String, value: String, tone: StatusTone) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        StatusIcon(tone)
-        Column {
-            Text(label, color = Color.White, fontSize = 10.sp, lineHeight = 14.sp)
-            Text(value, color = Color.White, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold)
-        }
+        Box(Modifier.size(8.dp).background(tone.color(), CircleShape))
+        Text(label, color = Color.White, fontSize = 12.sp, lineHeight = 16.sp)
     }
 }
 
@@ -294,53 +294,66 @@ private fun CameraStatusOverlay(
 
 @Composable
 private fun SessionSummaryBar(state: OperationUiState) {
-    Row(
-        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-            .horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        Text(stringResource(R.string.panel_session), color = Color.White, fontSize = 12.sp, lineHeight = 16.sp)
-        val session = state.session
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
+    val portrait = LocalConfiguration.current.orientation == Configuration.ORIENTATION_PORTRAIT
+    val session = state.session
+    val metrics: @Composable () -> Unit = {
             SessionMetric(
                 label = stringResource(R.string.session_motion_completed),
                 fullLabel = stringResource(R.string.session_motion_completed_full),
                 value = session?.motionCompleted,
+                vertical = portrait,
                 tone = StatusTone.MUTED,
             )
             SessionMetric(
                 label = stringResource(R.string.session_pickup_verified),
                 fullLabel = stringResource(R.string.session_pickup_verified_full),
                 value = session?.pickupVerified,
+                vertical = portrait,
                 tone = StatusTone.SUCCESS,
             )
             SessionMetric(
                 label = stringResource(R.string.session_pickup_unverified),
                 fullLabel = stringResource(R.string.session_pickup_unverified_full),
                 value = session?.pickupUnverified,
+                vertical = portrait,
                 tone = StatusTone.WARNING,
             )
             SessionMetric(
                 label = stringResource(R.string.session_pickup_failed),
                 fullLabel = stringResource(R.string.session_pickup_failed_full),
                 value = session?.pickupFailed,
+                vertical = portrait,
                 tone = StatusTone.DANGER,
             )
             SessionMetric(
                 label = stringResource(R.string.session_queue),
                 fullLabel = stringResource(R.string.session_queue_full),
                 value = state.pendingEvents,
+                vertical = portrait,
                 tone = if (state.pendingEvents != null && state.pendingEvents > 0) {
                     StatusTone.WARNING
                 } else {
                     StatusTone.MUTED
                 },
             )
-
+    }
+    if (portrait) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(stringResource(R.string.panel_session), color = Color.White, fontSize = 12.sp, lineHeight = 16.sp)
+            metrics()
+        }
+    } else {
+        Row(
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                .horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(stringResource(R.string.panel_session), color = Color.White, fontSize = 12.sp, lineHeight = 16.sp)
+            metrics()
         }
     }
 }
@@ -351,31 +364,33 @@ private fun SessionMetric(
     fullLabel: String,
     value: Int?,
     tone: StatusTone,
+    vertical: Boolean,
 ) {
     // Singkatan tampil di layar; `fullLabel` menjadi deskripsi pembaca layar agar
     // makna status tidak hilang (Design.md §7: status wajib punya teks bermakna).
     Row(
-        modifier = Modifier.statusDescription("$fullLabel: ${value ?: "-"}"),
+        modifier = (if (vertical) Modifier.fillMaxWidth() else Modifier).statusDescription("$fullLabel: ${value ?: "-"}"),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
         Row(
+            modifier = if (vertical) Modifier.weight(1f) else Modifier,
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
             StatusIcon(tone)
             Text(
-                text = label,
+                text = if (vertical) fullLabel else label,
                 color = Color.White,
                 fontSize = 12.sp,
                 lineHeight = 16.sp,
                 fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
+                maxLines = if (vertical) Int.MAX_VALUE else 1,
             )
         }
         Text(
             text = value?.toString() ?: stringResource(R.string.session_value_none),
-            color = if (value == null) Color.White else Color.White,
+            color = Color.White,
             fontSize = 12.sp,
                 lineHeight = 16.sp,
             fontWeight = FontWeight.SemiBold,
@@ -528,7 +543,8 @@ private fun CameraStatus.labelRes(): Int = when (this) {
 private fun CameraStatus.tone(): StatusTone = when (this) {
     CameraStatus.Ready -> StatusTone.SUCCESS
     CameraStatus.Starting -> StatusTone.MUTED
-    CameraStatus.PermissionRequired, CameraStatus.NoCameraAvailable -> StatusTone.WARNING
+    CameraStatus.PermissionRequired -> StatusTone.MUTED
+    CameraStatus.NoCameraAvailable -> StatusTone.DANGER
     is CameraStatus.Failed -> StatusTone.DANGER
 }
 
@@ -540,7 +556,7 @@ private fun CalibrationUiState.labelRes(): Int = when (this) {
 
 private fun CalibrationUiState.tone(): StatusTone = when (this) {
     CalibrationUiState.NONE -> StatusTone.MUTED
-    CalibrationUiState.NEEDS_CHECK -> StatusTone.WARNING
+    CalibrationUiState.NEEDS_CHECK -> StatusTone.DANGER
     CalibrationUiState.VALID -> StatusTone.SUCCESS
 }
 
