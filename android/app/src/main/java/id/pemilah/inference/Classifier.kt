@@ -95,9 +95,18 @@ sealed interface ClassifierOutcome {
     data class Failed(val failure: ClassifierFailure) : ClassifierOutcome
 }
 
-/** Kontrak klasifikasi satu frame; implementasi nyata memakai ONNX Runtime. */
+/** Kontrak klasifikasi frame; implementasi nyata memakai ONNX Runtime. */
 interface Classifier {
     fun classify(profile: ModelProfile, frame: ArgbFrame): ClassifierOutcome
+
+    /**
+     * Klasifikasi beberapa frame sekaligus (petak overlay, D-14).
+     *
+     * Implementasi bawaan menjalankan satu per satu; implementasi ONNX Runtime
+     * menumpuk petak menjadi satu batch agar hanya satu kali eksekusi sesi.
+     */
+    fun classifyAll(profile: ModelProfile, frames: List<ArgbFrame>): List<ClassifierOutcome> =
+        frames.map { classify(profile, it) }
 }
 
 /**
