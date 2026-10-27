@@ -126,3 +126,13 @@ Prasyarat lingkungan (dicatat di `../.work/evidence/device-requirements.md`):
 - ui/CameraOverlaySurface.kt: tint/blur latar visual tanpa blur teks; konstanta kontras.
 - src/debug/java/id/pemilah/ui/ShutterVerificationActivity.kt: fixture UI terkontrol; tidak ada pada release/aplikasi utama.
 - src/test/java/id/pemilah/ui/CameraOverlaySurfaceTest.kt: bukti kontras tint kasus terburuk.
+
+## Tambahan Uji Model/Galeri — 27 Oktober 2026
+- inference/ObjectDecoder.kt: letterbox, decode YOLO, NMS, crop frame.
+- inference/ObjectPipeline.kt: deteksi proposal, klasifikasi crop dan referensi.
+- inference/CorrectionMatcher.kt: descriptor dan pencocokan contoh terkonfirmasi.
+- onnx/OrtObjectDetector.kt: sesi ORT detektor aset, serialisasi akses/close.
+- storage/SampleRecord.kt, SampleStore.kt: metadata anotasi dan file lokal.
+- ui/ModelTestSession.kt, ModelTestScreen.kt: pemilik sesi dan komposisi uji.
+- ui/GalleryScreen.kt: daftar, detail dan koreksi per objek pada worker IO.
+- android/app/src/main/assets/object-detector.onnx: CV/best.onnx, pemasok lokasi.

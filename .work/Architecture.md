@@ -197,3 +197,32 @@ tidak ada, kotak pada kamera hanya menandai petak yang dinilai, bukan objek.
 
 Komponen yang bergantung pada butir di atas tetap boleh dibuat kerangkanya,
 tetapi tidak boleh diisi angka, protokol, atau klaim hasil tanpa keputusan.
+
+## 8. Uji Model, Galeri dan referensi koreksi (27 Oktober 2026)
+
+Sumber: mandat pengguna menyelesaikan semua WP dan memeriksa di akhir.
+Jalur baru: frame tegak → letterbox YOLO CV/best.onnx → decode/NMS kotak →
+crop objek → ResNet18 aktif → overlay. Label detektor lama hanya memasok
+lokasi; tidak dipetakan menjadi tujuh kelas secara paksa. Semua kelas
+detektor dapat memasok proposal; kemampuan menemukan objek terbatas model.
+
+OperationSession memiliki state inferensi; dua instance terpisah untuk
+pemantauan dan uji. Keluar layar menghentikan sesi; satu analyzer memproses
+frame. Generation token menolak hasil terlambat setelah stop/start.
+ModelTestSession mengoordinasi penyimpanan hanya pada uji. SampleStore
+menyimpan gambar dan anotasi JSON lokal dengan publikasi atomik; pembacaan
+galeri dan perubahan anotasi berjalan di worker IO. Tidak ada dependensi baru.
+
+Referensi koreksi berupa descriptor warna spasial crop 8×8 RGB. Pencocokan
+memakai jarak absolut rata-rata; kemiripan = 1 − jarak. Ambang dapat diubah
+operator di Galeri, nilai awal konservatif 0.97; bukan ambang kemampuan mesin
+atau jaminan akurasi. Referensi lintas label yang sama dekat ditolak. Hanya
+sampel terkonfirmasi dari identitas berkas model yang sama dimuat saat start.
+Skor referensi ditampilkan sebagai kemiripan, terpisah dari probabilitas model.
+Bobot model tidak berubah. Descriptor sederhana sensitif pencahayaan, sudut,
+dan latar; evaluasi data terpisah tetap diperlukan.
+
+Detektor dibundel sebagai assets/object-detector.onnx dari CV/best.onnx.
+Input/output aktual diverifikasi sebelum runtime. Proposal confidence 0.25
+dan NMS IoU 0.45 mengikuti parameter script CV/infer.py, nilai awal teknis
+yang dapat diperbarui, bukan angka mesin.
