@@ -75,11 +75,10 @@ import id.pemilah.usb.LinkState
 fun OperationScreen(
     modifier: Modifier = Modifier,
     state: OperationUiState? = null,
-    onOpenHistory: () -> Unit = {},
     onStart: () -> Unit = {},
     onStop: () -> Unit = {},
 ) {
-    var panelVisible by rememberSaveable { mutableStateOf(true) }
+    var panelVisible by rememberSaveable { mutableStateOf(false) }
     val panelScroll = rememberScrollState()
     var liveCameraStatus by remember { mutableStateOf<CameraStatus>(CameraStatus.Starting) }
     val ui = (state ?: rememberDefaultOperationState()).copy(cameraStatus = liveCameraStatus)
@@ -92,7 +91,6 @@ fun OperationScreen(
         }
         CameraStage(
             state = ui,
-            onOpenHistory = onOpenHistory,
             onStart = onStart,
             onStop = onStop,
             cameraStatus = liveCameraStatus,
@@ -102,7 +100,7 @@ fun OperationScreen(
         if (panelVisible) {
             Column(
                 modifier = Modifier.align(Alignment.TopEnd)
-                    .padding(top = 64.dp, end = 8.dp, bottom = 196.dp)
+                    .padding(top = 64.dp, end = 8.dp, bottom = 224.dp)
                     .width(sidebarWidth).fillMaxHeight()
                     .background(Palette.surface.copy(alpha = 0.94f), RoundedCornerShape(16.dp))
                     .verticalScroll(panelScroll).padding(12.dp),
@@ -182,8 +180,8 @@ private fun CameraStatusField(label: String, value: String, tone: StatusTone) {
     ) {
         StatusIcon(tone)
         Column {
-            Text(label, color = Color.White, fontSize = 10.sp)
-            Text(value, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+            Text(label, color = Color.White, fontSize = 10.sp, lineHeight = 14.sp)
+            Text(value, color = Color.White, fontSize = 12.sp, lineHeight = 16.sp, fontWeight = FontWeight.SemiBold)
         }
     }
 }
@@ -191,7 +189,6 @@ private fun CameraStatusField(label: String, value: String, tone: StatusTone) {
 @Composable
 private fun CameraStage(
     state: OperationUiState,
-    onOpenHistory: () -> Unit,
     onStart: () -> Unit,
     onStop: () -> Unit,
     cameraStatus: CameraStatus,
@@ -243,7 +240,7 @@ private fun CameraStage(
             modifier = Modifier.align(Alignment.TopStart)
                 .padding(start = 8.dp, end = 64.dp, top = 8.dp).fillMaxWidth(),
         ) {
-            SessionSummaryBar(state = state, onOpenHistory = onOpenHistory)
+            SessionSummaryBar(state = state)
         }
         Column(
             modifier = Modifier.align(Alignment.BottomCenter).fillMaxWidth(),
@@ -296,14 +293,14 @@ private fun CameraStatusOverlay(
 }
 
 @Composable
-private fun SessionSummaryBar(state: OperationUiState, onOpenHistory: () -> Unit) {
+private fun SessionSummaryBar(state: OperationUiState) {
     Row(
-        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp),
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+            .horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Text(stringResource(R.string.panel_session), color = Color.White, fontSize = 12.sp)
+        Text(stringResource(R.string.panel_session), color = Color.White, fontSize = 12.sp, lineHeight = 16.sp)
         val session = state.session
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -343,24 +340,7 @@ private fun SessionSummaryBar(state: OperationUiState, onOpenHistory: () -> Unit
                     StatusTone.MUTED
                 },
             )
-            CameraStatusField(
-                label = stringResource(R.string.session_backend),
-                value = stringResource(
-                    when (state.backend) {
-                        BackendUiState.CONNECTED -> R.string.session_backend_connected
-                        BackendUiState.UNAVAILABLE -> R.string.session_backend_unavailable
-                        BackendUiState.UNKNOWN -> R.string.session_value_none
-                    },
-                ),
-                tone = when (state.backend) {
-                    BackendUiState.CONNECTED -> StatusTone.SUCCESS
-                    BackendUiState.UNAVAILABLE -> StatusTone.WARNING
-                    BackendUiState.UNKNOWN -> StatusTone.MUTED
-                },
-            )
-            TextButton(onClick = onOpenHistory) {
-                Text(stringResource(R.string.session_open_history), color = Color.White)
-            }
+
         }
     }
 }
@@ -388,6 +368,7 @@ private fun SessionMetric(
                 text = label,
                 color = Color.White,
                 fontSize = 12.sp,
+                lineHeight = 16.sp,
                 fontWeight = FontWeight.SemiBold,
                 maxLines = 1,
             )
@@ -396,6 +377,7 @@ private fun SessionMetric(
             text = value?.toString() ?: stringResource(R.string.session_value_none),
             color = if (value == null) Color.White else Color.White,
             fontSize = 12.sp,
+                lineHeight = 16.sp,
             fontWeight = FontWeight.SemiBold,
         )
     }

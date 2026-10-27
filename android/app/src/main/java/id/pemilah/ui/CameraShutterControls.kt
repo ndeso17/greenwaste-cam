@@ -130,9 +130,9 @@ internal fun CameraShutterControls(
                 }
             }
         }
-        Text(label, color = Color.White, fontSize = 12.sp)
-        if (running) {
-            Text(stringResource(R.string.operation_stop_hint), color = Color.White, fontSize = 10.sp)
-        }
+        Text(label, color = Color.White, fontSize = 12.sp, lineHeight = 16.sp)
+        // Keep this slot in both states so the shutter never jumps during a state transition.
+        Text(stringResource(R.string.operation_stop_hint), color = Color.White,
+            fontSize = 10.sp, lineHeight = 12.sp)
     }
 }

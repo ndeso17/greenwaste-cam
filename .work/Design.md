@@ -390,3 +390,26 @@ Orientasi mengikuti perangkat; hilangkan kunci landscape. Insets sistem
 dihormati; teks overlay dapat digulir horizontal. Panel mesin overlay dibatasi
 lebar dan tinggi sisa agar tidak menutup shutter, baik portrait maupun tablet.
 Tidak ada perubahan alur deteksi, konfigurasi, protokol, atau data operasional.
+
+### Amandemen ringkasan pada sesi shutter
+Instruksi tambahan pengguna: hapus Backend dan Riwayat dari Ringkasan Sesi.
+Ringkasan hanya menyajikan metrik sesi/antrean; menu Logs tetap tersedia dan
+data/backend tidak diubah. Ketentuan ini menggantikan isi backend dan pintasan
+Riwayat pada spesifikasi ringkasan sebelumnya.
+
+Pada jendela sempit (<600 dp), rail kiri yang diperbesar mengambang di atas
+konten tanpa mempersempit area kamera/shutter; slot awal tetap 72 dp. Pada
+jendela lebar, rail tetap memakai lebar 72/232 dp. Insets vertikal rail
+menghindari jam/status bar dan area gestur sistem.
+
+### Amandemen panel default dan seluruh menu — instruksi tambahan pengguna
+Panel kanan default hidden pada peluncuran baru. State sesi tetap saveable.
+Root navigasi memakai safeDrawingPadding untuk seluruh tujuan (Operasi, Models,
+Bot, Settings, Kalibrasi, Logs), bukan hanya operasi. Insets dikonsumsi pada
+root sehingga anak tidak menggandakan jarak. Semua konten menghindari status
+bar, cutout dan gesture/navigation bar, baik portrait maupun landscape.
+
+Kontrol memakai slot keterangan yang sama pada idle/aktif agar shutter tidak
+bergeser ketika berubah state. Line-height label 16 sp dan keterangan 12 sp;
+status 14/16 sp. Ringkasan tetap memiliki tinggi sentuh minimal 48 dp. Panel
+mesin menyisakan area bawah 224 dp untuk status/kontrol dan teks diperbesar.

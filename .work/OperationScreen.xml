@@ -6,7 +6,7 @@
            plan="../../.work/Plan_AndroidPemilah_23102026-124815.md"/>
   <scope>Spesifikasi visual; bukan kode Android, protokol, atau persetujuan stack.</scope>
   <bindings semantics="UI projections only" defaultWhenAbsent="Belum ada data"/>
-  <layout flow="horizontal" safeInsets="respect-system-bars-and-display-cutouts">
+  <layout flow="horizontal" safeInsets="root-navigation-safeDrawing-all-six-destinations">
     <navigation defaultState="collapsed" id="navigationRail" placement="left" selected="operation" requirement="UI-01 UI-02 UI-03 UI-04 UI-05 UI-06 UI-07" wp="WP-09 WP-60 WP-61" decision="D-UI-02 D-05" collapsible="true" widthExpanded="232dp" widthCollapsed="72dp">
       <toggle id="railToggle" placement="rail-header-row-aligned-with-appTitle; outside-scroll" intent="toggle-rail" icon="chevron-left-when-expanded chevron-right-when-collapsed" descriptionBinding="nav.collapseLabel nav.expandLabel" minimumTouchDp="48" requirement="UI-07"/>
       <item id="operation" label="Operasi" prdLabel="Kamera / Operasi" icon="rounded-photo-camera"/>
@@ -38,9 +38,7 @@
             <metric id="pickupVerified" label="Pengambilan terverifikasi" binding="session.pickupVerified"/>
             <metric id="pickupUnverified" label="Pengambilan belum terverifikasi" binding="session.pickupUnverified" tone="warning"/>
             <metric id="pickupFailed" label="Pengambilan gagal" binding="session.pickupFailed" tone="danger"/>
-            <status id="backendStatus" binding="backend.connection" blocksOperation="false"/>
             <metric id="queueSize" label="Event tertunda" binding="backend.pendingEvents"/>
-            <action id="openHistory" label="Riwayat" intent="open-history"/>
             <overflow policy="compact-or-scroll-summary; keep-operation-controls-visible"/>
           </summary>
             <overlay id="operationControls" placement="bottom-center" background="thin-dark-gradient" requirement="UI-01 COM-05">
@@ -51,7 +49,7 @@
           </camera>
 
         </column>
-        <column id="machineSidebar" placement="right-overlay-above-shutter" flow="vertical" overflow="bounded-vertical-scroll-cards-only" collapsible="true" state="saveable">
+        <column id="machineSidebar" placement="right-overlay-above-shutter" flow="vertical" overflow="bounded-vertical-scroll-cards-only" collapsible="true" defaultState="hidden" state="saveable">
           <action id="toggleMachineSidebar" label="Sembunyikan panel" collapsedLabel="Panel" placement="above-scroll" minimumTouchDp="48" intent="toggle-sidebar-camera-expands"/>
           <banner id="guardBanner" placement="sidebar-scroll-top" background="transparent" visibleWhen="guard-failed-or-running" binding="operation.reasonsAndNextActions"/>
           <panel id="targetPanel" title="Target aktif" requirement="CAM-04" wp="WP-35">

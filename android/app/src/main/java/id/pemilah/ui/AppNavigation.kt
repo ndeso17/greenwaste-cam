@@ -1,6 +1,9 @@
 package id.pemilah.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.safeDrawingPadding
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -69,17 +72,22 @@ fun AppNavigation(
     // Saver khusus; NavigationRailState tetap menjadi kontrak yang diuji.
     var railExpanded by rememberSaveable { mutableStateOf(NavigationRailState().expanded) }
 
-    Row(modifier = modifier.fillMaxSize()) {
+    BoxWithConstraints(modifier = modifier.fillMaxSize().safeDrawingPadding()) {
+        // On compact windows the expanded rail overlays content instead of squeezing the shutter.
+        val reservedWidth = if (maxWidth < 600.dp || !railExpanded) {
+            NavigationRailWidths.collapsed
+        } else {
+            NavigationRailWidths.expanded
+        }
+        Row(Modifier.fillMaxSize()) {
+            Spacer(Modifier.width(reservedWidth))
+            DestinationContent(destination = current, modifier = Modifier.fillMaxSize())
+        }
         NavigationRail(
             current = current,
             expanded = railExpanded,
             onToggle = { railExpanded = NavigationRailState(railExpanded).toggle().expanded },
             onSelect = { current = it },
-        )
-        DestinationContent(
-            destination = current,
-            onNavigate = { current = it },
-            modifier = Modifier.fillMaxSize(),
         )
     }
 }
@@ -226,13 +234,11 @@ private fun NavigationRailItem(
 @Composable
 private fun DestinationContent(
     destination: AppDestination,
-    onNavigate: (AppDestination) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     if (destination == AppDestination.OPERATION) {
         OperationScreen(
             modifier = modifier,
-            onOpenHistory = { onNavigate(AppDestination.HISTORY) },
         )
         return
     }
