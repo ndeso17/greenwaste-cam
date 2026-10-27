@@ -44,7 +44,12 @@ fun CameraPreview(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var status by remember { mutableStateOf<CameraStatus>(CameraStatus.Starting) }
-    val previewView = remember { PreviewView(context) }
+    val previewView = remember {
+        PreviewView(context).apply {
+            // TextureView follows Compose bounds when the sidebar changes camera size.
+            implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+        }
+    }
 
     LaunchedEffect(hasPermission) {
         if (!hasPermission) {
