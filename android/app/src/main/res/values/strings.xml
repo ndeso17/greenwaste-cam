@@ -117,4 +117,6 @@
     <string name="stage3_not_integrated">Belum terintegrasi pada tahap 3</string>
     <string name="action_hide_panels">Sembunyikan panel</string>
     <string name="action_show_panels">Panel</string>
+    <string name="action_stop_now">Berhenti</string>
+    <string name="action_toggle_panels">Panel mesin</string>
 </resources>
