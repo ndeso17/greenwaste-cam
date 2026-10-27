@@ -155,6 +155,17 @@ private fun CameraStatusStrip(state: OperationUiState, modifier: Modifier = Modi
         horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
     ) {
         CameraStatusField(
+            label = stringResource(HeaderField.PROFILE.labelRes),
+            value = state.profileNameAndVersion
+                ?: stringResource(R.string.header_profile_none),
+            tone = if (state.profileNameAndVersion == null) {
+                StatusTone.MUTED
+            } else {
+                StatusTone.SUCCESS
+            },
+        )
+        StatusInfoDivider()
+        CameraStatusField(
             label = stringResource(R.string.header_camera),
             value = stringResource(state.cameraStatus.labelRes()),
             tone = state.cameraStatus.tone(),
