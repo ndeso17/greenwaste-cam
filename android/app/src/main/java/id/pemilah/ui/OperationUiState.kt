@@ -75,10 +75,12 @@ data class OperationUiState(
 /**
  * Alasan tombol Mulai nonaktif, diproyeksikan dari [OperationUiState].
  *
- * Urutan dan cakupan mengikuti guard per mode pada `.work/OperationScreen.xml`
- * (`modes`): pemantauan memeriksa kamera, profil, kalibrasi, dan gangguan;
- * pemilahan menambah koneksi, konfigurasi mesin, pemetaan kelas, dan kalibrasi
- * terkait. Backend **tidak** pernah menjadi alasan (COM-09).
+ * Cakupan guard mengikuti keputusan D-11 (27 Oktober 2026): pemantauan hanya
+ * memerlukan kamera siap dan profil model aktif yang sah, sehingga operator dapat
+ * menguji kamera dan klasifikasi tanpa kalibrasi, konfigurasi mesin, pemetaan bak,
+ * maupun robot. Pemilahan menambah koneksi controller, konfigurasi mesin,
+ * pemetaan kelas, dan kalibrasi terkait. Backend **tidak** pernah menjadi alasan
+ * (COM-09).
  */
 enum class StartBlocker {
     CAMERA_NOT_READY,
@@ -96,13 +98,15 @@ object StartGuardProjection {
     fun blockers(state: OperationUiState): List<StartBlocker> = buildList {
         if (state.cameraStatus != CameraStatus.Ready) add(StartBlocker.CAMERA_NOT_READY)
         if (state.profileNameAndVersion == null) add(StartBlocker.PROFILE_MISSING)
-        if (!state.activeClassesConfigured) add(StartBlocker.NO_ACTIVE_CLASS)
-        when (state.calibration) {
-            CalibrationUiState.NONE -> add(StartBlocker.CALIBRATION_MISSING)
-            CalibrationUiState.NEEDS_CHECK -> add(StartBlocker.CALIBRATION_NEEDS_CHECK)
-            CalibrationUiState.VALID -> Unit
-        }
+        // Syarat selebihnya hanya berlaku untuk pemilahan: pada pemantauan tidak
+        // ada koordinat blok, bak, atau aktuator yang dipakai (D-11).
         if (state.stage == OperationStage.SORTING) {
+            if (!state.activeClassesConfigured) add(StartBlocker.NO_ACTIVE_CLASS)
+            when (state.calibration) {
+                CalibrationUiState.NONE -> add(StartBlocker.CALIBRATION_MISSING)
+                CalibrationUiState.NEEDS_CHECK -> add(StartBlocker.CALIBRATION_NEEDS_CHECK)
+                CalibrationUiState.VALID -> Unit
+            }
             if (state.linkState != LinkState.CONNECTED) add(StartBlocker.CONTROLLER_DISCONNECTED)
             if (!state.machineConfigComplete) add(StartBlocker.CONFIG_INCOMPLETE)
             if (!state.binMappingComplete) add(StartBlocker.BIN_MAPPING_INCOMPLETE)

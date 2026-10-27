@@ -62,23 +62,36 @@ class StartGuardProjectionTest {
     }
 
     @Test
-    fun monitoring_calibrationNeedsCheck_blocks() {
+    fun monitoring_calibrationNeedsCheck_doesNotBlock() {
+        // D-11: kalibrasi hanya syarat pemilahan, bukan pemantauan.
         val state = GuardUiFixture.monitoringReady.copy(calibration = CalibrationUiState.NEEDS_CHECK)
 
-        assertEquals(
-            listOf(StartBlocker.CALIBRATION_NEEDS_CHECK),
-            StartGuardProjection.blockers(state),
-        )
+        assertTrue(StartGuardProjection.blockers(state).isEmpty())
     }
 
     @Test
-    fun monitoring_missingCalibration_blocks() {
+    fun monitoring_missingCalibration_doesNotBlock() {
         val state = GuardUiFixture.monitoringReady.copy(calibration = CalibrationUiState.NONE)
 
-        assertEquals(
-            listOf(StartBlocker.CALIBRATION_MISSING),
-            StartGuardProjection.blockers(state),
+        assertTrue(StartGuardProjection.blockers(state).isEmpty())
+    }
+
+    @Test
+    fun monitoring_cameraAndProfileOnly_canStart() {
+        // Keadaan minimum yang diminta pengguna: kamera siap + profil/model aktif.
+        val state = OperationUiState(
+            stage = OperationStage.MONITORING,
+            cameraStatus = CameraStatus.Ready,
+            profileNameAndVersion = "resnet18-7kelas v1",
+            calibration = CalibrationUiState.NONE,
+            activeClassesConfigured = false,
+            machineConfigComplete = false,
+            binMappingComplete = false,
+            linkState = LinkState.DISCONNECTED,
         )
+
+        assertTrue(StartGuardProjection.blockers(state).isEmpty())
+        assertTrue(StartGuardProjection.canStart(state))
     }
 
     @Test
@@ -151,6 +164,26 @@ class StartGuardProjectionTest {
     }
 
     @Test
+    fun sorting_missingCalibration_blocks() {
+        val state = GuardUiFixture.sortingReady.copy(calibration = CalibrationUiState.NONE)
+
+        assertEquals(
+            listOf(StartBlocker.CALIBRATION_MISSING),
+            StartGuardProjection.blockers(state),
+        )
+    }
+
+    @Test
+    fun sorting_missingActiveClasses_blocks() {
+        val state = GuardUiFixture.sortingReady.copy(activeClassesConfigured = false)
+
+        assertEquals(
+            listOf(StartBlocker.NO_ACTIVE_CLASS),
+            StartGuardProjection.blockers(state),
+        )
+    }
+
+    @Test
     fun running_disablesStartAndEnablesStop() {
         val state = GuardUiFixture.monitoringReady.copy(isRunning = true)
 
@@ -166,7 +199,7 @@ class StartGuardProjectionTest {
 
     @Test
     fun runningWithBlockers_stillCannotStart() {
-        val state = GuardUiFixture.monitoringReady.copy(
+        val state = GuardUiFixture.sortingReady.copy(
             isRunning = true,
             calibration = CalibrationUiState.NEEDS_CHECK,
         )
