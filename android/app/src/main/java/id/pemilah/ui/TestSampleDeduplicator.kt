@@ -29,7 +29,7 @@ internal class TestSampleDeduplicator {
         visible = objects.map { obj ->
             val match = available.filter { sameAppearance(it.anchor, obj) }
                 .maxByOrNull { overlap(it.anchor.region, obj.region) }
-                ?.takeIf { overlap(it.anchor.region, obj.region) >= MIN_OVERLAP }
+                ?.takeIf { samePosition(it.anchor.region, obj.region) }
             if (match != null) {
                 available.remove(match)
                 match.missed = 0
@@ -57,6 +57,14 @@ internal class TestSampleDeduplicator {
         return distance.isFinite() && 1.0 - distance >= MIN_SIMILARITY
     }
 
+    private fun samePosition(a: NormalizedRegion, b: NormalizedRegion): Boolean {
+        val centerShiftX = abs((a.left + a.right - b.left - b.right) / 2f)
+        val centerShiftY = abs((a.top + a.bottom - b.top - b.bottom) / 2f)
+        return overlap(a, b) >= MIN_OVERLAP &&
+            centerShiftX <= min(a.right - a.left, b.right - b.left) * MAX_CENTER_SHIFT &&
+            centerShiftY <= min(a.bottom - a.top, b.bottom - b.top) * MAX_CENTER_SHIFT
+    }
+
     private fun overlap(a: NormalizedRegion, b: NormalizedRegion): Float {
         val intersection = max(0f, min(a.right, b.right) - max(a.left, b.left)) *
             max(0f, min(a.bottom, b.bottom) - max(a.top, b.top))
@@ -67,9 +75,12 @@ internal class TestSampleDeduplicator {
 
     private companion object {
         // Image heuristics, not calibrated mechanical tolerances. Keep the saved anchor fixed
-        // so many small movements eventually count as a new position.
-        const val MIN_OVERLAP = 0.8f
-        const val MIN_SIMILARITY = 0.97
+        // so many small movements eventually count as a new position. Phone QC showed
+        // stationary crops varying below 0.97 similarity despite near-identical boxes;
+        // allow camera/crop variation while still requiring both location and appearance.
+        const val MIN_OVERLAP = 0.5f
+        const val MIN_SIMILARITY = 0.8
+        const val MAX_CENTER_SHIFT = 0.25f
         const val MAX_MISSED_FRAMES = 2
     }
 }

@@ -250,7 +250,8 @@ Instruksi pengguna: objek sama di posisi sama tidak terus disimpan.
 `ModelTestSession` memiliki `TestSampleDeduplicator`, terpisah dari tracker
 pemilahan robot. Setiap proposal dipasangkan satu-ke-satu dengan anchor
 posisi/descriptor yang telah diamati; label dan probabilitas tidak menjadi
-identitas. IoU minimum 0.8 dan kemiripan descriptor warna minimum 0.97
+identitas. IoU minimum 0.5 dan kemiripan descriptor warna minimum 0.8
+serta pergeseran titik tengah maksimum seperempat sisi kotak yang lebih kecil
 adalah heuristik gambar awal, bukan toleransi mesin atau bukti identitas fisik.
 Anchor tetap agar perpindahan kecil berurutan akhirnya menghasilkan sampel baru.
 Dua frame tanpa deteksi ditoleransi; setelah tiga frame hilang, kemunculan
@@ -263,3 +264,13 @@ model/resolusi; tidak membaca atau menghapus sampel Galeri lama.
 Batas: objek berbeda dengan warna/posisi sangat mirip dapat dianggap sama;
 perubahan pencahayaan besar dapat menghasilkan sampel baru. Pembuktian kamera
 HP tetap MANUAL-VERIFY; mekanisme ini bukan jaminan pelacakan fisik (CAM-05).
+
+Rework QC HP 27 Oktober 2026: rangkaian 14 sampel objek diam memiliki
+IoU antar-sampel 0.594–0.986 dan kemiripan 0.847–0.969. Syarat kemiripan
+0.97 sebelumnya gagal pada seluruh pasangan tersimpan. Regresi menyimpan
+ulang 14 kali; toleransi posisi/visual diperlebar untuk variasi crop/kamera.
+Nilai ini heuristik deduplikasi gambar dan belum merupakan evaluasi identitas
+objek atau ambang mesin. Anchor tetap, pencocokan satu-ke-satu, reset sesi,
+dan percobaan ulang I/O dipertahankan. Data anotasi tanpa JPEG masuk fixture
+unit test; replay JPEG melalui debug ModelVerificationActivity memakai
+penyimpanan verifikasi tersendiri tanpa mengubah Galeri pengguna.

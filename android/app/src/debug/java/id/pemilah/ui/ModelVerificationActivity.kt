@@ -31,6 +31,8 @@ class ModelVerificationActivity: ComponentActivity() {
         }
     }
     private fun verify(): String {
+        if (intent.getBooleanExtra("verifyDedup", false)) return verifyDedup()
+
         val reportFile=File(filesDir,"verification-report.txt")
         val classifier=OrtClassifier(ConfigStore(FileConfigStorage(applicationContext)))
         val detector=OrtObjectDetector(applicationContext)
@@ -75,4 +77,58 @@ class ModelVerificationActivity: ComponentActivity() {
             ("FAIL ${e.javaClass.simpleName}: ${e.message}").also {reportFile.writeText(it)}
         } finally { detector.close();classifier.close() }
     }
+    /** Replays QC camera images through native detection/classification and real sample I/O. */
+    private fun verifyDedup(): String {
+        val reportFile = File(filesDir, "verification-dedup-report.txt")
+        val classifier = OrtClassifier(ConfigStore(FileConfigStorage(applicationContext)))
+        val detector = OrtObjectDetector(applicationContext)
+        return try {
+            val profile = (ProfileRepository(ConfigStore(FileConfigStorage(applicationContext)))
+                .active() as ActiveProfileState.Selected).profile
+            val inputs = File(filesDir, "verification-dedup-input").listFiles().orEmpty()
+                .filter { it.extension == "jpg" }.sortedBy { it.name }
+            check(inputs.size >= 2) { "REPLAY_INPUTS_MISSING" }
+            val store = SampleStore(File(filesDir, "verification-dedup-samples"))
+            store.list().forEach { store.delete(it.id) }
+            val pipeline = ObjectPipeline(detector, classifier)
+            var encodings = 0
+            val test = ModelTestSession(
+                classifier, { ActiveProfileState.Selected(profile) }, pipeline, store,
+            ) { frame ->
+                encodings++
+                val image = Bitmap.createBitmap(
+                    frame.pixels, frame.width, frame.height, Bitmap.Config.ARGB_8888,
+                )
+                try {
+                    ByteArrayOutputStream().use { out ->
+                        check(image.compress(Bitmap.CompressFormat.JPEG, 90, out))
+                        out.toByteArray()
+                    }
+                } finally { image.recycle() }
+            }
+            test.operation.updateCameraStatus(CameraStatus.Ready)
+            check(test.start())
+            for (input in inputs) {
+                val bitmap = BitmapFactory.decodeFile(input.path) ?: error("INVALID_REPLAY_IMAGE")
+                val frame = try {
+                    val pixels = IntArray(bitmap.width * bitmap.height)
+                    bitmap.getPixels(pixels, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
+                    ArgbFrame(pixels, bitmap.width, bitmap.height)
+                } finally { bitmap.recycle() }
+                test.operation.onFrame(frame)
+                check(test.operation.classification !is ClassificationUi.Failed) {
+                    test.operation.classification.toString()
+                }
+            }
+            test.stop()
+            check(store.list().size == 1 && encodings == 1) {
+                "DUPLICATES: saved=${store.list().size}, encodings=$encodings"
+            }
+            "PASS native phone replay; frames=${inputs.size}; saved=1; encodings=1; gallery untouched"
+                .also { reportFile.writeText(it) }
+        } catch (e: Exception) {
+            "FAIL ${e.javaClass.simpleName}: ${e.message}".also { reportFile.writeText(it) }
+        } finally { detector.close(); classifier.close() }
+    }
+
 }
