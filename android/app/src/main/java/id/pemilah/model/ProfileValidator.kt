@@ -82,8 +82,16 @@ object ProfileValidator {
         COMBINED_LABEL_PATTERNS.any { it.containsMatchIn(label.trim()) }
 
     private fun outputProblems(output: OutputSpec): List<ProfileProblem> = buildList {
-        if (output.format == OutputFormat.CLASSIFICATION_ONLY) {
-            add(ProfileProblem("output.format", ProfileProblemReason.NO_LOCATION_OUTPUT))
+        // Keluaran klasifikasi diterima (D-10): model utama prototipe adalah
+        // ResNet18 klasifikasi tujuh kelas. Syarat "menghasilkan lokasi objek"
+        // berpindah ke pemasok kotak objek (deteksi), yang belum ada; tanpa
+        // pemasok itu klasifikasi tidak dapat menghasilkan kandidat. Karena itu
+        // profil klasifikasi **bukan** lagi ditolak di sini, dan kelangkaan
+        // kotak objeknya dicatat sebagai hambatan terbuka, bukan disamarkan.
+        if (output.format == OutputFormat.SSD_BOXES && !output.boxesNormalized) {
+            // Bentuk keluaran SSD dengan kotak tak ternormalisasi belum memiliki
+            // kontrak decoding (B-02); profil seperti itu belum dapat dipakai.
+            add(ProfileProblem("output.boxesNormalized", ProfileProblemReason.NO_LOCATION_OUTPUT))
         }
     }
 

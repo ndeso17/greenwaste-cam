@@ -33,19 +33,24 @@ object OnnxMetadata {
      * Baca metadata `names` menjadi label berurutan.
      *
      * Bentuk yang diterima mengikuti cara ultralytics menulis metadata:
-     * objek `{"0": "Organik", "1": "Plastik"}` atau larik `["Organik", "Plastik"]`.
+     * objek `{"0": "Organik", "1": "Plastik"}`, bentuk `repr` Python
+     * `{0: 'Organik', 1: 'Plastik'}`, atau larik `["Organik", "Plastik"]`.
      * Format lain (termasuk teks bebas) menghasilkan `null`.
      */
     fun parseClassNames(raw: String?): List<String>? {
         val text = raw?.trim().orEmpty()
         if (text.isEmpty()) return null
-        val element = runCatching { json.parseToJsonElement(text) }.getOrNull() ?: return null
+        // Ultralytics menulis `names` memakai kutip tunggal ala `repr` Python
+        // (`{0: 'Organik'}`), sehingga teks dinormalkan lebih dulu bila bentuk
+        // aslinya bukan JSON yang sah.
+        val source = normalizedJson(text)
+        val element = runCatching { json.parseToJsonElement(source) }.getOrNull() ?: return null
         val indexed: List<Pair<Int, String?>> = when (element) {
             is JsonArray -> element.mapIndexed { index, item -> index to item.textOrNull() }
             is JsonObject -> {
                 // Parser JSON menyimpan kunci terakhir saja saat kunci ganda
                 // muncul, sehingga kunci ganda harus dideteksi dari teks asli.
-                if (hasDuplicateKeys(text)) return null
+                if (hasDuplicateKeys(source)) return null
                 element.entries.map { (key, value) ->
                     (key.toIntOrNull() ?: return null) to value.textOrNull()
                 }
@@ -96,15 +101,27 @@ object OnnxMetadata {
     /**
      * Turunkan keluarga keluaran dari bentuk keluaran dan jumlah label.
      *
-     * Dua bentuk yang dikenali, setelah sumbu batch dan anchor dibuang:
+     * Bentuk yang dikenali:
      * - `[1, 4 + C, N]` → YOLO v8 tanpa objekness;
-     * - `[1, N, 5 + C]` → YOLO v5 dengan objekness.
+     * - `[1, N, 5 + C]` → YOLO v5 dengan objekness;
+     * - `[N, C]` → klasifikasi: satu label per gambar, tanpa kotak objek (D-10).
      *
      * `null` bila tidak ada keluaran yang cocok dengan jumlah label model.
      */
     fun outputSpecOf(shape: List<Long>?, classCount: Int): OutputSpec? {
         val dims = shape ?: return null
-        if (dims.size != 3 || classCount <= 0) return null
+        if (classCount <= 0) return null
+        if (dims.size == 2) {
+            // Klasifikasi: sumbu terakhir adalah jumlah kelas. Sumbu batch boleh
+            // dinamis (`-1`) karena tidak memengaruhi arti kanal.
+            if (dims[1] != classCount.toLong()) return null
+            return OutputSpec(
+                format = OutputFormat.CLASSIFICATION_ONLY,
+                boxesNormalized = false,
+                hasObjectness = false,
+            )
+        }
+        if (dims.size != 3) return null
         val channelsFirst = dims[1] == (YOLO_V8_COORDINATES + classCount).toLong()
         val channelsLast = dims[2] == (YOLO_V5_COORDINATES + classCount).toLong()
         return when {
@@ -131,10 +148,48 @@ object OnnxMetadata {
     /** Kunci objek JSON yang muncul lebih dari sekali; menandakan metadata rusak. */
     private fun hasDuplicateKeys(text: String): Boolean {
         val seen = mutableSetOf<String>()
-        return KEY_PATTERN.findAll(text).any { match -> !seen.add(match.groupValues[1]) }
+        return KEY_PATTERN.findAll(text).any { match ->
+            // Kunci boleh berupa string JSON atau angka tanpa kutip (bentuk repr).
+            val key = match.groupValues.drop(1).first { it.isNotEmpty() }
+            !seen.add(key)
+        }
     }
 
-    private val KEY_PATTERN = Regex("\"((?:[^\"\\\\]|\\\\.)*)\"\\s*:")
+    private val KEY_PATTERN = Regex("\"((?:[^\"\\\\]|\\\\.)*)\"\\s*:|(\\d+)\\s*:")
+
+    /**
+     * Ubah kutip tunggal ala `repr` Python menjadi JSON sah, tanpa menyentuh
+     * tanda kutip yang sudah benar. Teks yang sudah berupa JSON dikembalikan apa
+     * adanya supaya kunci ganda tetap terdeteksi.
+     */
+    private fun normalizedJson(text: String): String {
+        if (text.none { it == '\'' }) return text
+        val builder = StringBuilder(text.length)
+        var inDouble = false
+        var index = 0
+        while (index < text.length) {
+            val char = text[index]
+            when {
+                char == '\\' && index + 1 < text.length -> {
+                    builder.append(text, index, index + 2)
+                    index += 2
+                    continue
+                }
+
+                char == '"' -> {
+                    inDouble = !inDouble
+                    builder.append(char)
+                }
+
+                // Kutip tunggal di luar string JSON adalah pembuka/penutup label.
+                char == '\'' && !inDouble -> builder.append('"')
+
+                else -> builder.append(char)
+            }
+            index++
+        }
+        return builder.toString()
+    }
 
     private const val CHANNELS = 3L
 }

@@ -69,11 +69,14 @@ class ModelImport(
     private fun profileOf(displayName: String, info: OnnxModelInfo): ModelProfile {
         // Nama berkas sudah dipastikan berakhiran `.onnx` (tanpa peduli huruf besar).
         val baseName = displayName.dropLast(ONNX_EXTENSION.length)
-        val profileId = uniqueProfileId(slugOf(baseName))
+        val slug = slugOf(baseName)
+        val profileId = uniqueProfileId(slug)
         return ModelProfile(
             schemaVersion = ProfileValidator.SUPPORTED_SCHEMA_VERSION,
             profileId = profileId,
-            name = baseName.ifBlank { profileId },
+            // Nama tampil ikut dibedakan supaya dua model berberkas sama tidak
+            // tampil identik pada layar Models.
+            name = displayNameFor(baseName, slug, profileId),
             version = info.modelVersion.orEmpty(),
             modelFile = ProfileRepository.modelFileNameFor(profileId),
             labels = info.labels,
@@ -145,6 +148,18 @@ class ModelImport(
         var counter = 2
         while (repository.exists("$base-$counter")) counter++
         return "$base-$counter"
+    }
+
+    /**
+     * Nama tampil model. Impor pertama memakai nama berkas apa adanya; impor
+     * berikutnya dengan nama berkas sama menambahkan akhiran pembeda supaya dua
+     * kartu pada layar Models tidak tampak identik.
+     */
+    private fun displayNameFor(baseName: String, slug: String, profileId: String): String {
+        val plain = baseName.ifBlank { profileId }
+        if (profileId == slug) return plain
+        val suffix = profileId.removePrefix("$slug-").ifEmpty { profileId }
+        return "$plain ($suffix)"
     }
 
     /** Bentuk aman untuk nama berkas: huruf kecil, angka, tanda hubung, garis bawah. */

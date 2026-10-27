@@ -39,9 +39,11 @@ data class OutputSpec(
 )
 
 /**
- * Keluarga keluaran yang dikenali. [CLASSIFICATION_ONLY] sengaja ada supaya
- * profil tanpa lokasi objek dapat **ditolak dengan alasan spesifik** (MOD-02),
- * bukan gagal karena nilai tak dikenal.
+ * Keluarga keluaran yang dikenali. [CLASSIFICATION_ONLY] adalah keluaran
+ * klasifikasi `[N, C]`: satu label per gambar, tanpa kotak objek. Keluarga ini
+ * **diterima** sebagai model utama prototipe (D-10, 27 Oktober 2026); kotak
+ * objeknya berasal dari pemasok deteksi yang belum ada, dan kelangkaan itu
+ * dicatat sebagai hambatan terbuka, bukan disamarkan sebagai implementasi.
  */
 enum class OutputFormat { YOLO_V8, YOLO_V5, SSD_BOXES, CLASSIFICATION_ONLY }
 
@@ -59,6 +61,12 @@ enum class ProfileProblemReason {
     LABEL_NOT_MAPPED,
     MAPPING_FOR_UNKNOWN_LABEL,
     COMBINED_KALENG_BESI_LABEL,
+
+    /**
+     * Keluaran tidak menyatakan lokasi objek pada keluarga yang mensyaratkannya
+     * (saat ini `SSD_BOXES` tanpa kotak ternormalisasi). Keluaran
+     * `CLASSIFICATION_ONLY` **tidak** lagi memakai alasan ini (D-10).
+     */
     NO_LOCATION_OUTPUT,
     INVALID_CONFIDENCE_THRESHOLD,
     INVALID_INPUT_SIZE,
